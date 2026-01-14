@@ -15,8 +15,8 @@ import { supabase } from './lib/supabase';
 import { Trade, TradeFormData, Stats } from './types/trade';
 import RelaxationModal from './components/RelaxationModal';
 
-const STARTING_ROLL_POT = 3000;
-const STARTING_BANK_TOTAL = 0;
+const STARTING_ROLL_POT = 0;
+const STARTING_BANK_TOTAL = 3000;
 const TARGET_GOAL = 20000;
 
 function App() {
@@ -94,7 +94,7 @@ function App() {
   async function handleAddTrade(e: React.FormEvent) {
     e.preventDefault();
 
-    if (formData.stake > stats.rollPot) {
+    if (formData.stake > stats.bankTotal) {
       alert('Stake cannot exceed Roll Pot balance!');
       return;
     }
@@ -103,23 +103,28 @@ function App() {
       alert('Stake must be greater than 0!');
       return;
     }
-
-    let newRollPot = stats.rollPot - formData.stake;
-    let newBankTotal = stats.bankTotal;
-    let profitLoss = 0;
-    let amountBanked = 0;
-
-    if (formData.outcome === 'win') {
-      const totalReturn = formData.stake * formData.multiplier;
-      profitLoss = totalReturn - formData.stake;
-      amountBanked = profitLoss * 0.3;
-      const rollPotProfit = profitLoss * 0.7;
-
-      newRollPot += rollPotProfit;
-      newBankTotal += amountBanked;
-    } else {
-      profitLoss = -formData.stake;
-    }
+  // Stake comes out of BANK (not Roll Pot) and moves into Roll Pot as capital-at-risk
+  let newRollPot = stats.rollPot + formData.stake;
+  let newBankTotal = stats.bankTotal - formData.stake;
+  
+  let profitLoss = 0;
+  let amountBanked = 0;
+  
+  if (formData.outcome === 'win') {
+    const totalReturn = formData.stake * formData.multiplier;
+    profitLoss = totalReturn - formData.stake; // profit only
+  
+    // Split PROFIT: 70% stays in Roll Pot, 30% goes back to Bank
+    const rollPotProfit = profitLoss * 0.7;
+    amountBanked = profitLoss * 0.3;
+  
+    newRollPot += rollPotProfit;
+    newBankTotal += amountBanked;
+  } else {
+    // Loss: stake is already removed from bank and moved to roll pot; now burn it from roll pot
+    profitLoss = -formData.stake;
+    newRollPot -= formData.stake;
+  }
 
     const newTotalWealth = newRollPot + newBankTotal;
     const tradeNumber = trades.length + 1;
@@ -338,7 +343,7 @@ function App() {
                       type="number"
                       step="0.01"
                       min="0.01"
-                      max={stats.rollPot}
+                      max={stats.bankTotal}
                       value={formData.stake || ''}
                       onChange={(e) => setFormData({ ...formData, stake: parseFloat(e.target.value) })}
                       className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
