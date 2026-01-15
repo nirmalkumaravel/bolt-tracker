@@ -42,7 +42,6 @@ const CHECK_QUESTIONS: CheckQuestion[] = [
 export default function RelaxationModal({ isOpen, onComplete }: RelaxationModalProps) {
   const [seconds, setSeconds] = useState(30);
   const [currentTipIndex, setCurrentTipIndex] = useState(0);
-
   const [stage, setStage] = useState<'timer' | 'checklist'>('timer');
 
   const [answers, setAnswers] = useState<Record<string, Answer>>({
@@ -117,79 +116,69 @@ export default function RelaxationModal({ isOpen, onComplete }: RelaxationModalP
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-purple-900/95 via-blue-900/95 to-indigo-900/95 backdrop-blur-sm z-50 overflow-y-auto p-4 animate-fadeIn">
-      <div
-        className={`min-h-full flex ${
-          stage === 'timer' ? 'items-center' : 'items-start'
-        } justify-center`}
-      >
-        <div className="max-w-md w-full bg-white/10 backdrop-blur-md rounded-3xl shadow-2xl border border-white/20 animate-scaleIn max-h-[90vh] flex flex-col">
-          {/* Header */}
-          <div className="text-center space-y-4 p-6 pb-4">
-            <div className="flex justify-center">
-              <div className="relative">
-                <Brain className="w-16 h-16 text-cyan-300 animate-pulse" />
-                <Sparkles className="w-8 h-8 text-yellow-300 absolute -top-2 -right-2 animate-spin-slow" />
+    <div className="fixed inset-0 z-50 bg-gradient-to-br from-purple-900/95 via-blue-900/95 to-indigo-900/95 backdrop-blur-sm">
+      {/* IMPORTANT: no overflow scrolling here */}
+      <div className="min-h-[100dvh] w-full p-4 flex justify-center items-center">
+        <div className="max-w-md w-full">
+          {/* Card is the only scroll area */}
+          <div className="bg-white/10 backdrop-blur-md rounded-3xl shadow-2xl border border-white/20 animate-scaleIn overflow-hidden h-[90dvh] flex flex-col">
+            {/* Header */}
+            <div className="text-center space-y-4 p-6 pb-4 shrink-0">
+              <div className="flex justify-center">
+                <div className="relative">
+                  <Brain className="w-16 h-16 text-cyan-300 animate-pulse" />
+                  <Sparkles className="w-8 h-8 text-yellow-300 absolute -top-2 -right-2 animate-spin-slow" />
+                </div>
               </div>
+
+              {stage === 'timer' ? (
+                <>
+                  <h2 className="text-3xl font-bold text-white">Take a Breath</h2>
+
+                  <div className="relative">
+                    <div className="text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-blue-300 to-purple-300 animate-pulse">
+                      {seconds}
+                    </div>
+                    <div className="text-sm text-cyan-200 mt-2">seconds remaining</div>
+                  </div>
+
+                  <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 transition-all duration-1000 ease-linear"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-3xl font-bold text-white">Quick Clarity Check</h2>
+                  <p className="text-cyan-100/90 text-sm leading-relaxed">
+                    Answer honestly. You can proceed only if you complete all questions and have at least{' '}
+                    <span className="font-semibold text-white">4 out of 5</span> “Yes”.
+                  </p>
+                </>
+              )}
             </div>
 
-            {stage === 'timer' ? (
-              <>
-                <h2 className="text-3xl font-bold text-white">Take a Breath</h2>
-
-                <div className="relative">
-                  <div className="text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-blue-300 to-purple-300 animate-pulse">
-                    {seconds}
+            {/* Scrollable body */}
+            <div
+              className="flex-1 px-6 pb-6 overflow-y-auto overscroll-contain touch-pan-y"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
+              {stage === 'timer' ? (
+                <div className="pt-2">
+                  <div className="min-h-[140px] flex items-center justify-center">
+                    <p className="text-lg text-cyan-100 font-medium animate-fadeIn px-4 leading-relaxed text-center">
+                      {RELAXATION_TIPS[currentTipIndex]}
+                    </p>
                   </div>
-                  <div className="text-sm text-cyan-200 mt-2">seconds remaining</div>
                 </div>
-
-                <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 transition-all duration-1000 ease-linear"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-              </>
-            ) : (
-              <>
-                <h2 className="text-3xl font-bold text-white">Quick Clarity Check</h2>
-                <p className="text-cyan-100/90 text-sm leading-relaxed">
-                  Answer honestly. You can proceed only if you complete all questions and have at least{' '}
-                  <span className="font-semibold text-white">4 out of 5</span> “Yes”.
-                </p>
-              </>
-            )}
-          </div>
-
-          {/* Body (scrollable) */}
-          <div className="px-6 pb-6 overflow-y-auto flex-1">
-            {stage === 'timer' ? (
-              <>
-                <div className="min-h-[120px] flex items-center justify-center">
-                  <p className="text-lg text-cyan-100 font-medium animate-fadeIn px-4 leading-relaxed text-center">
-                    {RELAXATION_TIPS[currentTipIndex]}
-                  </p>
-                </div>
-
-                <button
-                  onClick={onComplete}
-                  disabled
-                  className="w-full py-4 rounded-xl font-semibold text-lg transition-all duration-300 bg-gray-500/50 text-gray-300 cursor-not-allowed"
-                >
-                  Relaxing...
-                </button>
-              </>
-            ) : (
-              <>
-                <div className="space-y-3 text-left">
+              ) : (
+                <div className="space-y-3">
                   {CHECK_QUESTIONS.map((q) => {
                     const val = answers[q.id];
                     return (
-                      <div
-                        key={q.id}
-                        className="rounded-2xl bg-white/10 border border-white/15 p-4"
-                      >
+                      <div key={q.id} className="rounded-2xl bg-white/10 border border-white/15 p-4">
                         <div className="text-white font-medium">{q.text}</div>
 
                         <div className="mt-3 flex gap-2">
@@ -222,28 +211,46 @@ export default function RelaxationModal({ isOpen, onComplete }: RelaxationModalP
                       </div>
                     );
                   })}
-                </div>
 
-                <div className="mt-4 flex items-center justify-between text-sm text-cyan-100/90">
-                  <div>
-                    Yes count: <span className="font-semibold text-white">{yesCount}</span>/5
+                  <div className="mt-4 flex items-center justify-between text-sm text-cyan-100/90">
+                    <div>
+                      Yes count: <span className="font-semibold text-white">{yesCount}</span>/5
+                    </div>
+                    <div>
+                      Status:{' '}
+                      <span className={`font-semibold ${canComplete ? 'text-emerald-300' : 'text-rose-300'}`}>
+                        {canComplete ? 'Ready' : 'Not Ready'}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    Status:{' '}
-                    <span
-                      className={`font-semibold ${
-                        canComplete ? 'text-emerald-300' : 'text-rose-300'
-                      }`}
-                    >
-                      {canComplete ? 'Ready' : 'Not Ready'}
-                    </span>
-                  </div>
-                </div>
 
+                  {!canComplete && allAnswered && (
+                    <div className="mt-3 text-xs text-cyan-100/80 leading-relaxed">
+                      If you got multiple “No”, consider skipping the next trade or reducing stake size.
+                    </div>
+                  )}
+
+                  {/* add breathing room so scroll never hides behind sticky footer */}
+                  <div className="h-24" />
+                </div>
+              )}
+            </div>
+
+            {/* Sticky footer action area (always reachable) */}
+            <div className="shrink-0 px-6 pb-6 pt-3 bg-gradient-to-b from-transparent to-black/10 border-t border-white/10">
+              {stage === 'timer' ? (
+                <button
+                  onClick={onComplete}
+                  disabled
+                  className="w-full py-4 rounded-xl font-semibold text-lg transition-all duration-300 bg-gray-500/50 text-gray-300 cursor-not-allowed"
+                >
+                  Relaxing...
+                </button>
+              ) : (
                 <button
                   onClick={onComplete}
                   disabled={!canComplete}
-                  className={`mt-4 w-full py-4 rounded-xl font-semibold text-lg transition-all duration-300 transform ${
+                  className={`w-full py-4 rounded-xl font-semibold text-lg transition-all duration-300 transform ${
                     !canComplete
                       ? 'bg-gray-500/50 text-gray-300 cursor-not-allowed'
                       : 'bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 text-white hover:scale-105 hover:shadow-lg hover:shadow-purple-500/50'
@@ -255,14 +262,8 @@ export default function RelaxationModal({ isOpen, onComplete }: RelaxationModalP
                     ? 'Need 4+ Yes to Proceed'
                     : 'Answer All Questions'}
                 </button>
-
-                {!canComplete && allAnswered && (
-                  <div className="mt-3 text-xs text-cyan-100/80 leading-relaxed">
-                    If you got multiple “No”, consider skipping the next trade or reducing stake size.
-                  </div>
-                )}
-              </>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
