@@ -90,77 +90,110 @@ function App() {
       successRate,
     });
   }
+async function handleAddTrade(e: React.FormEvent) {
+  e.preventDefault();
 
-  async function handleAddTrade(e: React.FormEvent) {
-    e.preventDefault();
+  if (formData.stake <= 0) {
+    alert('Stake must be greater than 0!');
+    return;
+  }
 
-    if (formData.stake > stats.bankTotal) {
+  const stake = Number(formData.stake);
+  const multiplier = Number(formData.multiplier);
+
+  let newRollPot = stats.rollPot;
+  let newBankTotal = stats.bankTotal;
+
+  // Determine whether this is the "seed from bank" case:
+  // If rollPot is 0, we allow the stake to come from bank (your first trade scenario).
+  const isSeedingTrade = stats.rollPot <= 0;
+
+  if (isSeedingTrade) {
+    if (stake > stats.bankTotal) {
+      alert('Stake cannot exceed Bank balance!');
+      return;
+    }
+  } else {
+    // Normal case: stake must come from roll pot only
+    if (stake > stats.rollPot) {
       alert('Stake cannot exceed Roll Pot balance!');
       return;
     }
+  }
 
-    if (formData.stake <= 0) {
-      alert('Stake must be greater than 0!');
-      return;
-    }
-  // Stake comes out of BANK (not Roll Pot) and moves into Roll Pot as capital-at-risk
-  let newRollPot = stats.rollPot + formData.stake;
-  let newBankTotal = stats.bankTotal - formData.stake;
-  
-  let profitLoss = 0;
-  let amountBanked = 0;
-  
+  const totalReturn = formData.outcome === 'win' ? stake * multiplier : 0;
+
+  // Amounts to allocate (based on TOTAL RETURN, not profit-only)
+  const bankAllocation = formData.outcome === 'win' ? totalReturn * 0.3 : 0;
+  const rollAllocation = formData.outcome === 'win' ? totalReturn * 0.7 : 0;
+
+  // Apply outcome
   if (formData.outcome === 'win') {
-    const totalReturn = formData.stake * formData.multiplier;
-    profitLoss = totalReturn - formData.stake; // profit only
-  
-    // Split PROFIT: 70% stays in Roll Pot, 30% goes back to Bank
-    const rollPotProfit = profitLoss * 0.7;
-    amountBanked = profitLoss * 0.3;
-  
-    newRollPot += rollPotProfit;
-    newBankTotal += amountBanked;
-  } else {
-    // Loss: stake is already removed from bank and moved to roll pot; now burn it from roll pot
-    profitLoss = -formData.stake;
-    newRollPot -= formData.stake;
-  }
-
-    const newTotalWealth = newRollPot + newBankTotal;
-    const tradeNumber = trades.length + 1;
-
-    const newTrade = {
-      trade_date: formData.trade_date,
-      description: formData.description,
-      multiplier: formData.multiplier,
-      stake: formData.stake,
-      outcome: formData.outcome,
-      profit_loss: profitLoss,
-      amount_banked: amountBanked,
-      roll_pot_after: newRollPot,
-      bank_total_after: newBankTotal,
-      total_wealth_after: newTotalWealth,
-      trade_number: tradeNumber,
-    };
-
-    const { error } = await supabase.from('trades').insert([newTrade]);
-
-    if (error) {
-      console.error('Error adding trade:', error);
-      alert('Failed to add trade');
+    if (isSeedingTrade) {
+      // Bank funds the stake only for this seeding case
+      newBankTotal = stats.bankTotal - stake + bankAllocation;
+      newRollPot = stats.rollPot + rollAllocation; // stats.rollPot likely 0
     } else {
-      setFormData({
-        trade_date: new Date().toISOString().split('T')[0],
-        description: '',
-        multiplier: 2.0,
-        stake: 0,
-        outcome: 'win',
-      });
-      setShowForm(false);
-      setShowRelaxation(true);
-      await loadTrades();
+      // Stake comes from roll pot; bank should not be debited
+      newBankTotal = stats.bankTotal + bankAllocation;
+      newRollPot = (stats.rollPot - stake) + rollAllocation;
+    }
+  } else {
+    // LOSS
+    if (isSeedingTrade) {
+      // Bank funded seeding stake; you lose stake from bank, roll pot stays 0
+      newBankTotal = stats.bankTotal - stake;
+      newRollPot = stats.rollPot; // likely 0
+    } else {
+      // Normal loss: burn from roll pot
+      newRollPot = stats.rollPot - stake;
+      newBankTotal = stats.bankTotal;
     }
   }
+
+  // Profit/Loss tracking (optional but consistent):
+  // Define P/L as (total return - stake) for win; -stake for loss
+  const profitLoss = formData.outcome === 'win' ? (totalReturn - stake) : -stake;
+
+  // Track "banked" as the bankAllocation (30% of total return) on win, else 0
+  const amountBanked = bankAllocation;
+
+  const newTotalWealth = newRollPot + newBankTotal;
+  const tradeNumber = trades.length + 1;
+
+  const newTrade = {
+    trade_date: formData.trade_date,
+    description: formData.description,
+    multiplier,
+    stake,
+    outcome: formData.outcome,
+    profit_loss: profitLoss,
+    amount_banked: amountBanked,
+    roll_pot_after: newRollPot,
+    bank_total_after: newBankTotal,
+    total_wealth_after: newTotalWealth,
+    trade_number: tradeNumber,
+  };
+
+  const { error } = await supabase.from('trades').insert([newTrade]);
+
+  if (error) {
+    console.error('Error adding trade:', error);
+    alert('Failed to add trade');
+  } else {
+    setFormData({
+      trade_date: new Date().toISOString().split('T')[0],
+      description: '',
+      multiplier: 2.0,
+      stake: 0,
+      outcome: 'win',
+    });
+    setShowForm(false);
+    setShowRelaxation(true);
+    await loadTrades();
+  }
+}
+
 
   async function handleReset() {
     if (!confirm('Are you sure you want to reset all data? This cannot be undone.')) {
@@ -198,41 +231,43 @@ function App() {
             </h1>
             <p className="text-blue-100 text-lg">Master Your Trades, Secure Your Future</p>
           </div>
+<div className="grid grid-cols-3 gap-2 md:gap-4">
+  {/* Roll Pot */}
+  <div className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full md:rounded-2xl p-3 md:p-6 shadow-xl transform hover:scale-105 transition-all duration-300 animate-slideInLeft">
+    <div className="flex items-center justify-center">
+      <Wallet className="w-6 h-6 md:w-8 md:h-8 text-white" />
+    </div>
+    <div className="text-center mt-1 md:mt-2">
+      <div className="text-xs md:text-3xl font-bold text-white">
+        ${stats.rollPot.toFixed(2)}
+      </div>
+    </div>
+  </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl p-6 shadow-xl transform hover:scale-105 transition-all duration-300 animate-slideInLeft">
-              <div className="flex items-center justify-between mb-2">
-                <Wallet className="w-8 h-8 text-white" />
-                <div className="text-white/80 text-sm font-medium">Roll Pot</div>
-              </div>
-              <div className="text-3xl md:text-4xl font-bold text-white">
-                ${stats.rollPot.toFixed(2)}
-              </div>
-              <div className="text-white/80 text-sm mt-1">Trading Capital</div>
-            </div>
+  {/* Bank Total */}
+  <div className="bg-gradient-to-br from-green-400 to-emerald-600 rounded-full md:rounded-2xl p-3 md:p-6 shadow-xl transform hover:scale-105 transition-all duration-300 animate-slideInUp">
+    <div className="flex items-center justify-center">
+      <PiggyBank className="w-6 h-6 md:w-8 md:h-8 text-white" />
+    </div>
+    <div className="text-center mt-1 md:mt-2">
+      <div className="text-xs md:text-3xl font-bold text-white">
+        ${stats.bankTotal.toFixed(2)}
+      </div>
+    </div>
+  </div>
 
-            <div className="bg-gradient-to-br from-green-400 to-emerald-600 rounded-2xl p-6 shadow-xl transform hover:scale-105 transition-all duration-300 animate-slideInUp">
-              <div className="flex items-center justify-between mb-2">
-                <PiggyBank className="w-8 h-8 text-white" />
-                <div className="text-white/80 text-sm font-medium">Bank Total</div>
-              </div>
-              <div className="text-3xl md:text-4xl font-bold text-white">
-                ${stats.bankTotal.toFixed(2)}
-              </div>
-              <div className="text-white/80 text-sm mt-1">Secured Funds</div>
-            </div>
-
-            <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl p-6 shadow-xl transform hover:scale-105 transition-all duration-300 animate-slideInRight">
-              <div className="flex items-center justify-between mb-2">
-                <DollarSign className="w-8 h-8 text-white" />
-                <div className="text-white/80 text-sm font-medium">Total Wealth</div>
-              </div>
-              <div className="text-3xl md:text-4xl font-bold text-white">
-                ${stats.totalWealth.toFixed(2)}
-              </div>
-              <div className="text-white/80 text-sm mt-1">Combined Value</div>
-            </div>
-          </div>
+  {/* Total Wealth */}
+  <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-full md:rounded-2xl p-3 md:p-6 shadow-xl transform hover:scale-105 transition-all duration-300 animate-slideInRight">
+    <div className="flex items-center justify-center">
+      <DollarSign className="w-6 h-6 md:w-8 md:h-8 text-white" />
+    </div>
+    <div className="text-center mt-1 md:mt-2">
+      <div className="text-xs md:text-3xl font-bold text-white">
+        ${stats.totalWealth.toFixed(2)}
+      </div>
+    </div>
+  </div>
+</div>
 
           <div className="bg-white/95 backdrop-blur rounded-2xl p-6 shadow-xl animate-fadeIn">
             <div className="flex items-center justify-between mb-4">
@@ -343,7 +378,7 @@ function App() {
                       type="number"
                       step="0.01"
                       min="0.01"
-                      max={stats.bankTotal}
+                      max={stats.rollPot > 0 ? stats.rollPot : stats.bankTotal}
                       value={formData.stake || ''}
                       onChange={(e) => setFormData({ ...formData, stake: parseFloat(e.target.value) })}
                       className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
