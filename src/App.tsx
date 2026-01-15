@@ -553,13 +553,66 @@ export default function App() {
     <>
       <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 p-4 pb-24">
         <div className="max-w-6xl mx-auto space-y-6">
-          <div className="text-center py-6 animate-fadeIn">
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-2 flex items-center justify-center gap-3">
-              <TrendingUp className="w-10 h-10" />
-              Trading Tracker
-            </h1>
-            <p className="text-blue-100 text-lg">Master Your Trades, Secure Your Future</p>
-          </div>
+         <div className="relative overflow-hidden rounded-3xl bg-white/10 backdrop-blur border border-white/20 shadow-xl p-4 md:p-5 animate-fadeIn">
+  {/* soft glow */}
+  <div className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 rounded-full bg-white/10 blur-3xl" />
+  <div className="pointer-events-none absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-white/10 blur-3xl" />
+
+  <div className="flex items-center justify-between gap-4">
+    {/* Left: Title */}
+    <div className="flex items-center gap-3">
+      <div className="w-11 h-11 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center shadow">
+        <TrendingUp className="w-6 h-6 text-white" />
+      </div>
+
+      <div className="leading-tight">
+        <div className="flex items-center gap-2">
+          <h1 className="text-white font-extrabold text-xl md:text-2xl tracking-tight">
+            Trading Tracker
+          </h1>
+
+          {/* badge */}
+          <span className="text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-full bg-white/15 border border-white/20 text-white/90">
+            Discipline Mode
+          </span>
+        </div>
+
+        <p className="text-white/80 text-xs md:text-sm mt-1">
+          Track roll pot, bank, and compounding progress — stay consistent.
+        </p>
+      </div>
+    </div>
+
+    {/* Right: Mini KPI chips (compact) */}
+    <div className="hidden sm:flex items-center gap-2">
+      <div className="px-3 py-2 rounded-2xl bg-white/10 border border-white/15">
+        <div className="text-[10px] text-white/70 leading-none">Win %</div>
+        <div className="text-white font-extrabold text-sm leading-none mt-1">
+          {stats.successRate.toFixed(0)}%
+        </div>
+      </div>
+
+      <div className="px-3 py-2 rounded-2xl bg-white/10 border border-white/15">
+        <div className="text-[10px] text-white/70 leading-none">Trades</div>
+        <div className="text-white font-extrabold text-sm leading-none mt-1">
+          {stats.totalTrades}
+        </div>
+      </div>
+
+      <div className="px-3 py-2 rounded-2xl bg-white/10 border border-white/15">
+        <div className="text-[10px] text-white/70 leading-none">Total</div>
+        <div className="text-white font-extrabold text-sm leading-none mt-1">
+          ${Number(stats.totalWealth).toFixed(0)}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {/* subtle animated underline */}
+  <div className="mt-4 h-[3px] w-full rounded-full bg-white/10 overflow-hidden">
+    <div className="h-full w-1/3 bg-white/50 animate-pulse" />
+  </div>
+</div>
 
           <div className="flex justify-center">
             <div className="bg-white/15 backdrop-blur rounded-2xl p-1 shadow-xl border border-white/20 flex gap-1">
