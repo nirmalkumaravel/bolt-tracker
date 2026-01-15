@@ -553,51 +553,68 @@ export default function App() {
     <>
       <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 p-4 pb-24">
         <div className="max-w-6xl mx-auto space-y-6">
-       {/* Compact Sports Header */}
-<div className="relative overflow-hidden rounded-3xl bg-white/10 backdrop-blur border border-white/20 shadow-xl px-4 py-4 md:px-5 md:py-5 animate-fadeIn">
-  {/* glow blobs */}
-  <div className="pointer-events-none absolute -top-20 -right-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
-  <div className="pointer-events-none absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+  {/* Sports Header (Cricket vibe, no "bet" wording) */}
+<div className="relative overflow-hidden rounded-3xl bg-white/10 backdrop-blur border border-white/20 shadow-xl px-4 py-4 md:px-6 md:py-5 animate-fadeIn">
+  {/* soft glow blobs */}
+  <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
+  <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-white/10 blur-3xl" />
+
+  {/* tiny floating sparkles */}
+  <div className="pointer-events-none absolute inset-0 opacity-40">
+    <div className="absolute left-6 top-6 h-2 w-2 rounded-full bg-white/60 animate-pulse" />
+    <div className="absolute right-10 top-10 h-1.5 w-1.5 rounded-full bg-white/50 animate-pulse" />
+    <div className="absolute left-14 bottom-10 h-1.5 w-1.5 rounded-full bg-white/50 animate-pulse" />
+  </div>
 
   <div className="flex items-center justify-between gap-4">
-    {/* Left: icon + title */}
+    {/* Left: Cricket bat + bouncing ball */}
     <div className="flex items-center gap-3">
-      <div className="relative w-12 h-12 rounded-2xl bg-white/15 border border-white/20 shadow flex items-center justify-center overflow-hidden">
-        {/* Bat (simple SVG) */}
-        <svg viewBox="0 0 64 64" className="w-7 h-7 opacity-95">
+      <div className="relative w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-white/15 border border-white/20 shadow flex items-center justify-center overflow-hidden">
+        {/* Cricket bat (simple SVG) */}
+        <svg viewBox="0 0 64 64" className="w-8 h-8 md:w-9 md:h-9 opacity-95">
           <defs>
-            <linearGradient id="batg" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0" stopColor="white" stopOpacity="0.9" />
+            <linearGradient id="crbat" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="white" stopOpacity="0.95" />
               <stop offset="1" stopColor="white" stopOpacity="0.55" />
             </linearGradient>
           </defs>
+
+          {/* handle */}
+          <rect x="38" y="8" width="6" height="18" rx="2" fill="white" opacity="0.55" />
+          {/* blade */}
           <path
-            d="M38 10c2 2 2 6-2 10L22 34c-4 4-8 4-10 2s-2-6 2-10L28 12c4-4 8-4 10-2Z"
-            fill="url(#batg)"
+            d="M30 18c6-6 16-4 18 4l3 13c1 5-2 10-7 12l-9 4c-5 2-10-1-11-6l-2-11c-1-6 3-13 8-16Z"
+            fill="url(#crbat)"
           />
+          {/* edge highlight */}
           <path
-            d="M12 36l-2 2c-2 2-2 6 2 10s8 4 10 2l2-2c-6-2-10-6-12-12Z"
-            fill="white"
-            opacity="0.35"
+            d="M43 20c3 1 5 3 6 6l2 10c1 3-1 6-4 7l-6 3"
+            fill="none"
+            stroke="white"
+            strokeOpacity="0.35"
+            strokeWidth="2"
+            strokeLinecap="round"
           />
         </svg>
 
-        {/* Bouncing Ball */}
-        <div className="absolute right-2 top-2 w-2.5 h-2.5 rounded-full bg-white shadow animate-bounce" />
+        {/* Ball that bounces in the corner */}
+        <div className="absolute right-2 top-2 w-2.5 h-2.5 md:w-3 md:h-3 rounded-full bg-white shadow animate-bounce" />
+
+        {/* subtle moving shine */}
+        <div className="absolute -left-10 top-0 h-full w-10 bg-white/15 rotate-12 animate-[shine_2.4s_ease-in-out_infinite]" />
       </div>
 
       <div className="leading-tight">
         <h1 className="text-white font-extrabold text-lg md:text-2xl tracking-tight">
-          Match Log
+          Scoreboard
         </h1>
-        {/* ultra-short tagline */}
         <p className="text-white/75 text-[11px] md:text-xs">
           Roll • Bank • Goal
         </p>
       </div>
     </div>
 
-    {/* Right: compact chips */}
+    {/* Right: compact stats chips */}
     <div className="flex items-center gap-2">
       <div className="px-3 py-2 rounded-2xl bg-white/10 border border-white/15">
         <div className="text-[10px] text-white/70 leading-none">Win%</div>
@@ -615,10 +632,25 @@ export default function App() {
     </div>
   </div>
 
-  {/* small animated “ball trail” line */}
+  {/* animated “ball trail” bar */}
   <div className="mt-4 h-[3px] w-full rounded-full bg-white/10 overflow-hidden relative">
-    <div className="absolute left-0 top-0 h-full w-16 bg-white/50 animate-pulse rounded-full" />
+    <div className="absolute left-0 top-0 h-full w-20 rounded-full bg-white/55 animate-[slide_2.2s_ease-in-out_infinite]" />
   </div>
+
+  {/* Tailwind custom animations (no config needed; uses arbitrary keyframes) */}
+  <style>{`
+    @keyframes slide {
+      0% { transform: translateX(-40%); opacity: .2; }
+      50% { transform: translateX(40%); opacity: .7; }
+      100% { transform: translateX(140%); opacity: .2; }
+    }
+    @keyframes shine {
+      0% { transform: translateX(-120px) rotate(12deg); opacity: 0; }
+      30% { opacity: .4; }
+      60% { opacity: .25; }
+      100% { transform: translateX(220px) rotate(12deg); opacity: 0; }
+    }
+  `}</style>
 </div>
 
 
