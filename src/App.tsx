@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   TrendingUp,
   DollarSign,
@@ -9,7 +9,7 @@ import {
   XCircle,
   Wallet,
   PiggyBank,
-  Trophy
+  Trophy,
 } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { Trade, TradeFormData, Stats } from './types/trade';
@@ -24,7 +24,7 @@ function App() {
   const [stats, setStats] = useState<Stats>({
     rollPot: STARTING_ROLL_POT,
     bankTotal: STARTING_BANK_TOTAL,
-    totalWealth: STARTING_ROLL_POT,
+    totalWealth: STARTING_ROLL_POT + STARTING_BANK_TOTAL, // ✅ fix
     totalTrades: 0,
     wins: 0,
     losses: 0,
@@ -43,6 +43,7 @@ function App() {
 
   useEffect(() => {
     loadTrades();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function loadTrades() {
@@ -66,7 +67,7 @@ function App() {
       setStats({
         rollPot: STARTING_ROLL_POT,
         bankTotal: STARTING_BANK_TOTAL,
-        totalWealth: STARTING_ROLL_POT,
+        totalWealth: STARTING_ROLL_POT + STARTING_BANK_TOTAL, // ✅ fix
         totalTrades: 0,
         wins: 0,
         losses: 0,
@@ -76,8 +77,8 @@ function App() {
     }
 
     const latestTrade = tradesList[0];
-    const wins = tradesList.filter(t => t.outcome === 'win').length;
-    const losses = tradesList.filter(t => t.outcome === 'loss').length;
+    const wins = tradesList.filter((t) => t.outcome === 'win').length;
+    const losses = tradesList.filter((t) => t.outcome === 'loss').length;
     const successRate = tradesList.length > 0 ? (wins / tradesList.length) * 100 : 0;
 
     setStats({
@@ -90,116 +91,113 @@ function App() {
       successRate,
     });
   }
-async function handleAddTrade(e: React.FormEvent) {
-  e.preventDefault();
 
-  if (formData.stake <= 0) {
-    alert('Stake must be greater than 0!');
-    return;
-  }
+  async function handleAddTrade(e: React.FormEvent) {
+    e.preventDefault();
 
-  const stake = Number(formData.stake);
-  const multiplier = Number(formData.multiplier);
-
-  let newRollPot = stats.rollPot;
-  let newBankTotal = stats.bankTotal;
-
-
-  const isSeedingTrade = stats.rollPot <= 0;
-
-  if (isSeedingTrade) {
-    if (stake > stats.bankTotal) {
-      alert('Stake cannot exceed Bank balance!');
+    if (formData.stake <= 0) {
+      alert('Stake must be greater than 0!');
       return;
     }
-  } else {
-    // Normal case: stake must come from roll pot only
-    if (stake > stats.rollPot) {
-      alert('Stake cannot exceed Roll Pot balance!');
-      return;
-    }
-  }
 
-  const totalReturn = formData.outcome === 'win' ? stake * multiplier : 0;
+    const stake = Number(formData.stake);
+    const multiplier = Number(formData.multiplier);
 
-  // Amounts to allocate (based on TOTAL RETURN, not profit-only)
-  const bankAllocation = formData.outcome === 'win' ? totalReturn * 0.3 : 0;
-  const rollAllocation = formData.outcome === 'win' ? totalReturn * 0.7 : 0;
+    let newRollPot = stats.rollPot;
+    let newBankTotal = stats.bankTotal;
 
-  // Apply outcome
-  if (formData.outcome === 'win') {
+    // ✅ Seeding rule (as you wrote): if rollPot is 0, allow stake from bank
+    const isSeedingTrade = stats.rollPot <= 0;
+
     if (isSeedingTrade) {
-      // Bank funds the stake only for this seeding case
-      newBankTotal = stats.bankTotal - stake + bankAllocation;
-      newRollPot = stats.rollPot + rollAllocation; // stats.rollPot likely 0
+      if (stake > stats.bankTotal) {
+        alert('Stake cannot exceed Bank balance!');
+        return;
+      }
     } else {
-      // Stake comes from roll pot; bank should not be debited
-      newBankTotal = stats.bankTotal + bankAllocation;
-      newRollPot = (stats.rollPot - stake) + rollAllocation;
+      if (stake > stats.rollPot) {
+        alert('Stake cannot exceed Roll Pot balance!');
+        return;
+      }
     }
-  } else {
-    // LOSS
-    if (isSeedingTrade) {
-      // Bank funded seeding stake; you lose stake from bank, roll pot stays 0
-      newBankTotal = stats.bankTotal - stake;
-      newRollPot = stats.rollPot; // likely 0
+
+    const totalReturn = formData.outcome === 'win' ? stake * multiplier : 0;
+
+    // ✅ Split based on TOTAL RETURN (profit + capital)
+    const bankAllocation = formData.outcome === 'win' ? totalReturn * 0.3 : 0;
+    const rollAllocation = formData.outcome === 'win' ? totalReturn * 0.7 : 0;
+
+    if (formData.outcome === 'win') {
+      if (isSeedingTrade) {
+        // bank funds the stake, then gets 30% of total return back
+        newBankTotal = stats.bankTotal - stake + bankAllocation;
+        newRollPot = stats.rollPot + rollAllocation;
+      } else {
+        // stake comes from roll pot; bank is not debited
+        newBankTotal = stats.bankTotal + bankAllocation;
+        newRollPot = stats.rollPot - stake + rollAllocation;
+      }
     } else {
-      // Normal loss: burn from roll pot
-      newRollPot = stats.rollPot - stake;
-      newBankTotal = stats.bankTotal;
+      // LOSS
+      if (isSeedingTrade) {
+        // seeding loss: lose stake from bank, roll pot stays 0
+        newBankTotal = stats.bankTotal - stake;
+        newRollPot = stats.rollPot;
+      } else {
+        // normal loss: burn from roll pot
+        newRollPot = stats.rollPot - stake;
+        newBankTotal = stats.bankTotal;
+      }
+    }
+
+    const profitLoss = formData.outcome === 'win' ? totalReturn - stake : -stake;
+    const amountBanked = bankAllocation;
+
+    const newTotalWealth = newRollPot + newBankTotal;
+    const tradeNumber = trades.length + 1;
+
+    const newTrade = {
+      trade_date: formData.trade_date,
+      description: formData.description,
+      multiplier,
+      stake,
+      outcome: formData.outcome,
+      profit_loss: profitLoss,
+      amount_banked: amountBanked,
+      roll_pot_after: newRollPot,
+      bank_total_after: newBankTotal,
+      total_wealth_after: newTotalWealth,
+      trade_number: tradeNumber,
+    };
+
+    const { error } = await supabase.from('trades').insert([newTrade]);
+
+    if (error) {
+      console.error('Error adding trade:', error);
+      alert('Failed to add trade');
+    } else {
+      setFormData({
+        trade_date: new Date().toISOString().split('T')[0],
+        description: '',
+        multiplier: 2.0,
+        stake: 0,
+        outcome: 'win',
+      });
+      setShowForm(false);
+      setShowRelaxation(true);
+      await loadTrades();
     }
   }
-
-  // Profit/Loss tracking (optional but consistent):
-  // Define P/L as (total return - stake) for win; -stake for loss
-  const profitLoss = formData.outcome === 'win' ? (totalReturn - stake) : -stake;
-
-  // Track "banked" as the bankAllocation (30% of total return) on win, else 0
-  const amountBanked = bankAllocation;
-
-  const newTotalWealth = newRollPot + newBankTotal;
-  const tradeNumber = trades.length + 1;
-
-  const newTrade = {
-    trade_date: formData.trade_date,
-    description: formData.description,
-    multiplier,
-    stake,
-    outcome: formData.outcome,
-    profit_loss: profitLoss,
-    amount_banked: amountBanked,
-    roll_pot_after: newRollPot,
-    bank_total_after: newBankTotal,
-    total_wealth_after: newTotalWealth,
-    trade_number: tradeNumber,
-  };
-
-  const { error } = await supabase.from('trades').insert([newTrade]);
-
-  if (error) {
-    console.error('Error adding trade:', error);
-    alert('Failed to add trade');
-  } else {
-    setFormData({
-      trade_date: new Date().toISOString().split('T')[0],
-      description: '',
-      multiplier: 2.0,
-      stake: 0,
-      outcome: 'win',
-    });
-    setShowForm(false);
-    setShowRelaxation(true);
-    await loadTrades();
-  }
-}
-
 
   async function handleReset() {
     if (!confirm('Are you sure you want to reset all data? This cannot be undone.')) {
       return;
     }
 
-    const { error } = await supabase.from('trades').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    const { error } = await supabase
+      .from('trades')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000');
 
     if (error) {
       console.error('Error resetting trades:', error);
@@ -230,146 +228,135 @@ async function handleAddTrade(e: React.FormEvent) {
             </h1>
             <p className="text-blue-100 text-lg">Master Your Trades, Secure Your Future</p>
           </div>
-<div className="grid grid-cols-3 gap-2 md:gap-4">
-  {/* Roll Pot */}
-  <div className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full md:rounded-2xl p-3 md:p-6 shadow-xl transform hover:scale-105 transition-all duration-300 animate-slideInLeft">
-    <div className="flex items-center justify-center">
-      <Wallet className="w-6 h-6 md:w-8 md:h-8 text-white" />
-    </div>
-    <div className="text-center mt-1 md:mt-2">
-      <div className="text-xs md:text-3xl font-bold text-white">
-        ${stats.rollPot.toFixed(2)}
-      </div>
-    </div>
-  </div>
 
-  {/* Bank Total */}
-  <div className="bg-gradient-to-br from-green-400 to-emerald-600 rounded-full md:rounded-2xl p-3 md:p-6 shadow-xl transform hover:scale-105 transition-all duration-300 animate-slideInUp">
-    <div className="flex items-center justify-center">
-      <PiggyBank className="w-6 h-6 md:w-8 md:h-8 text-white" />
-    </div>
-    <div className="text-center mt-1 md:mt-2">
-      <div className="text-xs md:text-3xl font-bold text-white">
-        ${stats.bankTotal.toFixed(2)}
-      </div>
-    </div>
-  </div>
+          {/* Top 3 summary cards */}
+          <div className="grid grid-cols-3 gap-2 md:gap-4">
+            <div className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full md:rounded-2xl p-3 md:p-6 shadow-xl transform hover:scale-105 transition-all duration-300 animate-slideInLeft">
+              <div className="flex items-center justify-center">
+                <Wallet className="w-6 h-6 md:w-8 md:h-8 text-white" />
+              </div>
+              <div className="text-center mt-1 md:mt-2">
+                <div className="text-xs md:text-3xl font-bold text-white">
+                  ${stats.rollPot.toFixed(2)}
+                </div>
+              </div>
+            </div>
 
-  {/* Total Wealth */}
-  <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-full md:rounded-2xl p-3 md:p-6 shadow-xl transform hover:scale-105 transition-all duration-300 animate-slideInRight">
-    <div className="flex items-center justify-center">
-      <DollarSign className="w-6 h-6 md:w-8 md:h-8 text-white" />
-    </div>
-    <div className="text-center mt-1 md:mt-2">
-      <div className="text-xs md:text-3xl font-bold text-white">
-        ${stats.totalWealth.toFixed(2)}
-      </div>
-    </div>
-  </div>
-</div>
-<div className="bg-white/95 backdrop-blur rounded-2xl p-6 shadow-xl animate-fadeIn">
-  <div className="flex items-center justify-between mb-4">
-    <div className="flex items-center gap-2">
-      <Target className="w-6 h-6 text-purple-600" />
-      <span className="font-semibold text-gray-800">Goal Progress</span>
-    </div>
+            <div className="bg-gradient-to-br from-green-400 to-emerald-600 rounded-full md:rounded-2xl p-3 md:p-6 shadow-xl transform hover:scale-105 transition-all duration-300 animate-slideInUp">
+              <div className="flex items-center justify-center">
+                <PiggyBank className="w-6 h-6 md:w-8 md:h-8 text-white" />
+              </div>
+              <div className="text-center mt-1 md:mt-2">
+                <div className="text-xs md:text-3xl font-bold text-white">
+                  ${stats.bankTotal.toFixed(2)}
+                </div>
+              </div>
+            </div>
 
-    <div className="text-right">
-      <div className="text-2xl font-bold text-purple-700">
-        ${stats.totalWealth.toFixed(0)}
-      </div>
-      <div className="text-xs md:text-sm text-gray-600">
-        of ${TARGET_GOAL.toLocaleString()}
-      </div>
-    </div>
-  </div>
+            <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-full md:rounded-2xl p-3 md:p-6 shadow-xl transform hover:scale-105 transition-all duration-300 animate-slideInRight">
+              <div className="flex items-center justify-center">
+                <DollarSign className="w-6 h-6 md:w-8 md:h-8 text-white" />
+              </div>
+              <div className="text-center mt-1 md:mt-2">
+                <div className="text-xs md:text-3xl font-bold text-white">
+                  ${stats.totalWealth.toFixed(2)}
+                </div>
+              </div>
+            </div>
+          </div>
 
-  {/* Bar */}
-  <div className="relative w-full h-8 rounded-full bg-gray-200 overflow-hidden shadow-inner">
-    {/* subtle animated sheen */}
-    <div className="absolute inset-0 opacity-30 animate-pulse bg-gradient-to-r from-white/0 via-white/40 to-white/0" />
+          {/* Goal Progress */}
+          <div className="bg-white/95 backdrop-blur rounded-2xl p-6 shadow-xl animate-fadeIn">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Target className="w-6 h-6 text-purple-600" />
+                <span className="font-semibold text-gray-800">Goal Progress</span>
+              </div>
 
-    {/* progress */}
-    <div
-      className="h-full rounded-full bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 transition-all duration-1000 ease-out shadow-[0_0_18px_rgba(236,72,153,0.45)] flex items-center justify-end pr-2"
-      style={{ width: `${Math.min(progressPercentage, 100)}%` }}
-    >
-      {progressPercentage >= 10 && (
-        <span className="text-white text-xs font-bold drop-shadow">
-          {progressPercentage.toFixed(1)}%
-        </span>
-      )}
-    </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-purple-700">
+                  ${stats.totalWealth.toFixed(0)}
+                </div>
+                <div className="text-xs md:text-sm text-gray-600">
+                  of ${TARGET_GOAL.toLocaleString()}
+                </div>
+              </div>
+            </div>
 
-    {/* marker dot */}
-    <div
-      className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md"
-      style={{ left: `calc(${Math.min(progressPercentage, 100)}% - 6px)` }}
-    />
-  </div>
+            <div className="relative w-full h-8 rounded-full bg-gray-200 overflow-hidden shadow-inner">
+              <div className="absolute inset-0 opacity-30 animate-pulse bg-gradient-to-r from-white/0 via-white/40 to-white/0" />
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 transition-all duration-1000 ease-out shadow-[0_0_18px_rgba(236,72,153,0.45)] flex items-center justify-end pr-2"
+                style={{ width: `${Math.min(progressPercentage, 100)}%` }}
+              >
+                {progressPercentage >= 10 && (
+                  <span className="text-white text-xs font-bold drop-shadow">
+                    {progressPercentage.toFixed(1)}%
+                  </span>
+                )}
+              </div>
+              <div
+                className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md"
+                style={{ left: `calc(${Math.min(progressPercentage, 100)}% - 6px)` }}
+              />
+            </div>
 
-  {/* small caption */}
-  <div className="mt-2 text-xs text-gray-600 flex justify-between">
-    <span>Start</span>
-    <span className="font-semibold text-gray-700">
-      {Math.min(progressPercentage, 100).toFixed(1)}%
-    </span>
-    <span>Goal</span>
-  </div>
-</div>
+            <div className="mt-2 text-xs text-gray-600 flex justify-between">
+              <span>Start</span>
+              <span className="font-semibold text-gray-700">
+                {Math.min(progressPercentage, 100).toFixed(1)}%
+              </span>
+              <span>Goal</span>
+            </div>
+          </div>
 
-<div className="grid grid-cols-4 gap-2 md:gap-4">
-  {/* Total Trades */}
-  <div className="bg-gradient-to-br from-sky-500 to-indigo-600 rounded-full md:rounded-2xl p-3 md:p-4 shadow-lg transform hover:scale-105 transition-all">
-    <div className="flex items-center justify-center">
-      <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-white" />
-    </div>
-    <div className="text-center mt-1">
-      <div className="text-xs md:text-xl font-bold text-white">{stats.totalTrades}</div>
-    </div>
-  </div>
+          {/* Total Trades / Wins / Losses / Success Rate */}
+          <div className="grid grid-cols-4 gap-2 md:gap-4">
+            <div className="bg-gradient-to-br from-sky-500 to-indigo-600 rounded-full md:rounded-2xl p-3 md:p-4 shadow-lg transform hover:scale-105 transition-all">
+              <div className="flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-white" />
+              </div>
+              <div className="text-center mt-1">
+                <div className="text-xs md:text-xl font-bold text-white">{stats.totalTrades}</div>
+              </div>
+            </div>
 
-  {/* Wins */}
-  <div className="bg-gradient-to-br from-emerald-500 to-green-600 rounded-full md:rounded-2xl p-3 md:p-4 shadow-lg transform hover:scale-105 transition-all">
-    <div className="flex items-center justify-center">
-      <CheckCircle className="w-5 h-5 md:w-6 md:h-6 text-white" />
-    </div>
-    <div className="text-center mt-1">
-      <div className="text-xs md:text-xl font-bold text-white">{stats.wins}</div>
-    </div>
-  </div>
+            <div className="bg-gradient-to-br from-emerald-500 to-green-600 rounded-full md:rounded-2xl p-3 md:p-4 shadow-lg transform hover:scale-105 transition-all">
+              <div className="flex items-center justify-center">
+                <CheckCircle className="w-5 h-5 md:w-6 md:h-6 text-white" />
+              </div>
+              <div className="text-center mt-1">
+                <div className="text-xs md:text-xl font-bold text-white">{stats.wins}</div>
+              </div>
+            </div>
 
-  {/* Losses */}
-  <div className="bg-gradient-to-br from-rose-500 to-red-600 rounded-full md:rounded-2xl p-3 md:p-4 shadow-lg transform hover:scale-105 transition-all">
-    <div className="flex items-center justify-center">
-      <XCircle className="w-5 h-5 md:w-6 md:h-6 text-white" />
-    </div>
-    <div className="text-center mt-1">
-      <div className="text-xs md:text-xl font-bold text-white">{stats.losses}</div>
-    </div>
-  </div>
+            <div className="bg-gradient-to-br from-rose-500 to-red-600 rounded-full md:rounded-2xl p-3 md:p-4 shadow-lg transform hover:scale-105 transition-all">
+              <div className="flex items-center justify-center">
+                <XCircle className="w-5 h-5 md:w-6 md:h-6 text-white" />
+              </div>
+              <div className="text-center mt-1">
+                <div className="text-xs md:text-xl font-bold text-white">{stats.losses}</div>
+              </div>
+            </div>
 
-  {/* Success Rate */}
-  <div className="bg-gradient-to-br from-fuchsia-500 to-purple-600 rounded-full md:rounded-2xl p-3 md:p-4 shadow-lg transform hover:scale-105 transition-all">
-    <div className="flex items-center justify-center">
-      <Trophy className="w-5 h-5 md:w-6 md:h-6 text-white" />
-    </div>
-    <div className="text-center mt-1">
-      <div className="text-xs md:text-xl font-bold text-white">
-        {stats.successRate.toFixed(1)}%
-      </div>
-    </div>
-  </div>
-</div>
+            <div className="bg-gradient-to-br from-fuchsia-500 to-purple-600 rounded-full md:rounded-2xl p-3 md:p-4 shadow-lg transform hover:scale-105 transition-all">
+              <div className="flex items-center justify-center">
+                <Trophy className="w-5 h-5 md:w-6 md:h-6 text-white" />
+              </div>
+              <div className="text-center mt-1">
+                <div className="text-xs md:text-xl font-bold text-white">
+                  {stats.successRate.toFixed(1)}%
+                </div>
+              </div>
+            </div>
+          </div>
 
           {showForm && (
             <div className="bg-white/95 backdrop-blur rounded-2xl p-6 shadow-xl animate-scaleIn">
               <h2 className="text-2xl font-bold text-gray-800 mb-4">Add New Trade</h2>
               <form onSubmit={handleAddTrade} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Date
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
                   <input
                     type="date"
                     value={formData.trade_date}
@@ -403,7 +390,9 @@ async function handleAddTrade(e: React.FormEvent) {
                       step="0.01"
                       min="1.01"
                       value={formData.multiplier}
-                      onChange={(e) => setFormData({ ...formData, multiplier: parseFloat(e.target.value) })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, multiplier: parseFloat(e.target.value) })
+                      }
                       className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
                       required
                     />
@@ -427,9 +416,7 @@ async function handleAddTrade(e: React.FormEvent) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Outcome
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Outcome</label>
                   <div className="grid grid-cols-2 gap-4">
                     <button
                       type="button"
@@ -504,7 +491,9 @@ async function handleAddTrade(e: React.FormEvent) {
                     <tr className="border-b-2 border-gray-300">
                       <th className="text-left py-3 px-2 font-semibold text-gray-700">#</th>
                       <th className="text-left py-3 px-2 font-semibold text-gray-700">Date</th>
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700">Description</th>
+                      <th className="text-left py-3 px-2 font-semibold text-gray-700">
+                        Description
+                      </th>
                       <th className="text-right py-3 px-2 font-semibold text-gray-700">Stake</th>
                       <th className="text-right py-3 px-2 font-semibold text-gray-700">Mult.</th>
                       <th className="text-right py-3 px-2 font-semibold text-gray-700">P/L</th>
@@ -529,9 +518,11 @@ async function handleAddTrade(e: React.FormEvent) {
                           ${trade.stake.toFixed(2)}
                         </td>
                         <td className="py-3 px-2 text-right">{trade.multiplier.toFixed(2)}x</td>
-                        <td className={`py-3 px-2 text-right font-bold ${
-                          trade.outcome === 'win' ? 'text-green-600' : 'text-red-600'
-                        }`}>
+                        <td
+                          className={`py-3 px-2 text-right font-bold ${
+                            trade.outcome === 'win' ? 'text-green-600' : 'text-red-600'
+                          }`}
+                        >
                           {trade.profit_loss >= 0 ? '+' : ''}${trade.profit_loss.toFixed(2)}
                         </td>
                         <td className="py-3 px-2 text-right text-green-600 font-medium">
@@ -556,10 +547,7 @@ async function handleAddTrade(e: React.FormEvent) {
         </div>
       </div>
 
-      <RelaxationModal
-        isOpen={showRelaxation}
-        onComplete={() => setShowRelaxation(false)}
-      />
+      <RelaxationModal isOpen={showRelaxation} onComplete={() => setShowRelaxation(false)} />
     </>
   );
 }
