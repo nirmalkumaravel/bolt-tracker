@@ -268,60 +268,102 @@ async function handleAddTrade(e: React.FormEvent) {
     </div>
   </div>
 </div>
+// ✅ Replace your Goal Progress block with this upgraded version
+<div className="bg-white/95 backdrop-blur rounded-2xl p-6 shadow-xl animate-fadeIn">
+  <div className="flex items-center justify-between mb-4">
+    <div className="flex items-center gap-2">
+      <Target className="w-6 h-6 text-purple-600" />
+      <span className="font-semibold text-gray-800">Goal Progress</span>
+    </div>
 
-          <div className="bg-white/95 backdrop-blur rounded-2xl p-6 shadow-xl animate-fadeIn">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Target className="w-6 h-6 text-purple-600" />
-                <span className="font-semibold text-gray-800">Goal Progress</span>
-              </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold text-purple-600">
-                  ${stats.totalWealth.toFixed(0)}
-                </div>
-                <div className="text-sm text-gray-600">of ${TARGET_GOAL.toLocaleString()}</div>
-              </div>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-6 overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 transition-all duration-1000 ease-out flex items-center justify-end pr-2"
-                style={{ width: `${Math.min(progressPercentage, 100)}%` }}
-              >
-                {progressPercentage >= 10 && (
-                  <span className="text-white text-xs font-bold">
-                    {progressPercentage.toFixed(1)}%
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
+    <div className="text-right">
+      <div className="text-2xl font-bold text-purple-700">
+        ${stats.totalWealth.toFixed(0)}
+      </div>
+      <div className="text-xs md:text-sm text-gray-600">
+        of ${TARGET_GOAL.toLocaleString()}
+      </div>
+    </div>
+  </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white/95 backdrop-blur rounded-xl p-4 shadow-lg transform hover:scale-105 transition-all">
-              <div className="text-gray-600 text-sm mb-1">Total Trades</div>
-              <div className="text-2xl font-bold text-gray-800">{stats.totalTrades}</div>
-            </div>
-            <div className="bg-white/95 backdrop-blur rounded-xl p-4 shadow-lg transform hover:scale-105 transition-all">
-              <div className="text-green-600 text-sm mb-1 flex items-center gap-1">
-                <CheckCircle className="w-4 h-4" /> Wins
-              </div>
-              <div className="text-2xl font-bold text-green-600">{stats.wins}</div>
-            </div>
-            <div className="bg-white/95 backdrop-blur rounded-xl p-4 shadow-lg transform hover:scale-105 transition-all">
-              <div className="text-red-600 text-sm mb-1 flex items-center gap-1">
-                <XCircle className="w-4 h-4" /> Losses
-              </div>
-              <div className="text-2xl font-bold text-red-600">{stats.losses}</div>
-            </div>
-            <div className="bg-white/95 backdrop-blur rounded-xl p-4 shadow-lg transform hover:scale-105 transition-all">
-              <div className="text-purple-600 text-sm mb-1 flex items-center gap-1">
-                <Trophy className="w-4 h-4" /> Success Rate
-              </div>
-              <div className="text-2xl font-bold text-purple-600">
-                {stats.successRate.toFixed(1)}%
-              </div>
-            </div>
-          </div>
+  {/* Bar */}
+  <div className="relative w-full h-8 rounded-full bg-gray-200 overflow-hidden shadow-inner">
+    {/* subtle animated sheen */}
+    <div className="absolute inset-0 opacity-30 animate-pulse bg-gradient-to-r from-white/0 via-white/40 to-white/0" />
+
+    {/* progress */}
+    <div
+      className="h-full rounded-full bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 transition-all duration-1000 ease-out shadow-[0_0_18px_rgba(236,72,153,0.45)] flex items-center justify-end pr-2"
+      style={{ width: `${Math.min(progressPercentage, 100)}%` }}
+    >
+      {progressPercentage >= 10 && (
+        <span className="text-white text-xs font-bold drop-shadow">
+          {progressPercentage.toFixed(1)}%
+        </span>
+      )}
+    </div>
+
+    {/* marker dot */}
+    <div
+      className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md"
+      style={{ left: `calc(${Math.min(progressPercentage, 100)}% - 6px)` }}
+    />
+  </div>
+
+  {/* small caption */}
+  <div className="mt-2 text-xs text-gray-600 flex justify-between">
+    <span>Start</span>
+    <span className="font-semibold text-gray-700">
+      {Math.min(progressPercentage, 100).toFixed(1)}%
+    </span>
+    <span>Goal</span>
+  </div>
+</div>
+
+// ✅ Replace your Total Trades/Wins/Losses/Success Rate block with this single colorful row
+<div className="grid grid-cols-4 gap-2 md:gap-4">
+  {/* Total Trades */}
+  <div className="bg-gradient-to-br from-sky-500 to-indigo-600 rounded-full md:rounded-2xl p-3 md:p-4 shadow-lg transform hover:scale-105 transition-all">
+    <div className="flex items-center justify-center">
+      <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-white" />
+    </div>
+    <div className="text-center mt-1">
+      <div className="text-xs md:text-xl font-bold text-white">{stats.totalTrades}</div>
+    </div>
+  </div>
+
+  {/* Wins */}
+  <div className="bg-gradient-to-br from-emerald-500 to-green-600 rounded-full md:rounded-2xl p-3 md:p-4 shadow-lg transform hover:scale-105 transition-all">
+    <div className="flex items-center justify-center">
+      <CheckCircle className="w-5 h-5 md:w-6 md:h-6 text-white" />
+    </div>
+    <div className="text-center mt-1">
+      <div className="text-xs md:text-xl font-bold text-white">{stats.wins}</div>
+    </div>
+  </div>
+
+  {/* Losses */}
+  <div className="bg-gradient-to-br from-rose-500 to-red-600 rounded-full md:rounded-2xl p-3 md:p-4 shadow-lg transform hover:scale-105 transition-all">
+    <div className="flex items-center justify-center">
+      <XCircle className="w-5 h-5 md:w-6 md:h-6 text-white" />
+    </div>
+    <div className="text-center mt-1">
+      <div className="text-xs md:text-xl font-bold text-white">{stats.losses}</div>
+    </div>
+  </div>
+
+  {/* Success Rate */}
+  <div className="bg-gradient-to-br from-fuchsia-500 to-purple-600 rounded-full md:rounded-2xl p-3 md:p-4 shadow-lg transform hover:scale-105 transition-all">
+    <div className="flex items-center justify-center">
+      <Trophy className="w-5 h-5 md:w-6 md:h-6 text-white" />
+    </div>
+    <div className="text-center mt-1">
+      <div className="text-xs md:text-xl font-bold text-white">
+        {stats.successRate.toFixed(1)}%
+      </div>
+    </div>
+  </div>
+</div>
 
           {showForm && (
             <div className="bg-white/95 backdrop-blur rounded-2xl p-6 shadow-xl animate-scaleIn">
