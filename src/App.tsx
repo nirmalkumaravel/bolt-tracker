@@ -553,66 +553,74 @@ export default function App() {
     <>
       <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 p-4 pb-24">
         <div className="max-w-6xl mx-auto space-y-6">
-         <div className="relative overflow-hidden rounded-3xl bg-white/10 backdrop-blur border border-white/20 shadow-xl p-4 md:p-5 animate-fadeIn">
-  {/* soft glow */}
-  <div className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 rounded-full bg-white/10 blur-3xl" />
-  <div className="pointer-events-none absolute -bottom-24 -left-24 w-72 h-72 rounded-full bg-white/10 blur-3xl" />
+       {/* Compact Sports Header */}
+<div className="relative overflow-hidden rounded-3xl bg-white/10 backdrop-blur border border-white/20 shadow-xl px-4 py-4 md:px-5 md:py-5 animate-fadeIn">
+  {/* glow blobs */}
+  <div className="pointer-events-none absolute -top-20 -right-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
+  <div className="pointer-events-none absolute -bottom-20 -left-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
 
   <div className="flex items-center justify-between gap-4">
-    {/* Left: Title */}
+    {/* Left: icon + title */}
     <div className="flex items-center gap-3">
-      <div className="w-11 h-11 rounded-2xl bg-white/15 border border-white/20 flex items-center justify-center shadow">
-        <TrendingUp className="w-6 h-6 text-white" />
+      <div className="relative w-12 h-12 rounded-2xl bg-white/15 border border-white/20 shadow flex items-center justify-center overflow-hidden">
+        {/* Bat (simple SVG) */}
+        <svg viewBox="0 0 64 64" className="w-7 h-7 opacity-95">
+          <defs>
+            <linearGradient id="batg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stopColor="white" stopOpacity="0.9" />
+              <stop offset="1" stopColor="white" stopOpacity="0.55" />
+            </linearGradient>
+          </defs>
+          <path
+            d="M38 10c2 2 2 6-2 10L22 34c-4 4-8 4-10 2s-2-6 2-10L28 12c4-4 8-4 10-2Z"
+            fill="url(#batg)"
+          />
+          <path
+            d="M12 36l-2 2c-2 2-2 6 2 10s8 4 10 2l2-2c-6-2-10-6-12-12Z"
+            fill="white"
+            opacity="0.35"
+          />
+        </svg>
+
+        {/* Bouncing Ball */}
+        <div className="absolute right-2 top-2 w-2.5 h-2.5 rounded-full bg-white shadow animate-bounce" />
       </div>
 
       <div className="leading-tight">
-        <div className="flex items-center gap-2">
-          <h1 className="text-white font-extrabold text-xl md:text-2xl tracking-tight">
-            Trading Tracker
-          </h1>
-
-          {/* badge */}
-          <span className="text-[10px] md:text-[11px] font-semibold px-2 py-1 rounded-full bg-white/15 border border-white/20 text-white/90">
-            Discipline Mode
-          </span>
-        </div>
-
-        <p className="text-white/80 text-xs md:text-sm mt-1">
-          Track roll pot, bank, and compounding progress — stay consistent.
+        <h1 className="text-white font-extrabold text-lg md:text-2xl tracking-tight">
+          Match Log
+        </h1>
+        {/* ultra-short tagline */}
+        <p className="text-white/75 text-[11px] md:text-xs">
+          Roll • Bank • Goal
         </p>
       </div>
     </div>
 
-    {/* Right: Mini KPI chips (compact) */}
-    <div className="hidden sm:flex items-center gap-2">
+    {/* Right: compact chips */}
+    <div className="flex items-center gap-2">
       <div className="px-3 py-2 rounded-2xl bg-white/10 border border-white/15">
-        <div className="text-[10px] text-white/70 leading-none">Win %</div>
+        <div className="text-[10px] text-white/70 leading-none">Win%</div>
         <div className="text-white font-extrabold text-sm leading-none mt-1">
           {stats.successRate.toFixed(0)}%
         </div>
       </div>
 
-      <div className="px-3 py-2 rounded-2xl bg-white/10 border border-white/15">
+      <div className="hidden sm:block px-3 py-2 rounded-2xl bg-white/10 border border-white/15">
         <div className="text-[10px] text-white/70 leading-none">Trades</div>
         <div className="text-white font-extrabold text-sm leading-none mt-1">
           {stats.totalTrades}
         </div>
       </div>
-
-      <div className="px-3 py-2 rounded-2xl bg-white/10 border border-white/15">
-        <div className="text-[10px] text-white/70 leading-none">Total</div>
-        <div className="text-white font-extrabold text-sm leading-none mt-1">
-          ${Number(stats.totalWealth).toFixed(0)}
-        </div>
-      </div>
     </div>
   </div>
 
-  {/* subtle animated underline */}
-  <div className="mt-4 h-[3px] w-full rounded-full bg-white/10 overflow-hidden">
-    <div className="h-full w-1/3 bg-white/50 animate-pulse" />
+  {/* small animated “ball trail” line */}
+  <div className="mt-4 h-[3px] w-full rounded-full bg-white/10 overflow-hidden relative">
+    <div className="absolute left-0 top-0 h-full w-16 bg-white/50 animate-pulse rounded-full" />
   </div>
 </div>
+
 
           <div className="flex justify-center">
             <div className="bg-white/15 backdrop-blur rounded-2xl p-1 shadow-xl border border-white/20 flex gap-1">
