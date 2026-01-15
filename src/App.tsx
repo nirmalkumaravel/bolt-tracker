@@ -104,8 +104,7 @@ async function handleAddTrade(e: React.FormEvent) {
   let newRollPot = stats.rollPot;
   let newBankTotal = stats.bankTotal;
 
-  // Determine whether this is the "seed from bank" case:
-  // If rollPot is 0, we allow the stake to come from bank (your first trade scenario).
+
   const isSeedingTrade = stats.rollPot <= 0;
 
   if (isSeedingTrade) {
@@ -268,7 +267,6 @@ async function handleAddTrade(e: React.FormEvent) {
     </div>
   </div>
 </div>
-// ✅ Replace your Goal Progress block with this upgraded version
 <div className="bg-white/95 backdrop-blur rounded-2xl p-6 shadow-xl animate-fadeIn">
   <div className="flex items-center justify-between mb-4">
     <div className="flex items-center gap-2">
@@ -320,7 +318,6 @@ async function handleAddTrade(e: React.FormEvent) {
   </div>
 </div>
 
-// ✅ Replace your Total Trades/Wins/Losses/Success Rate block with this single colorful row
 <div className="grid grid-cols-4 gap-2 md:gap-4">
   {/* Total Trades */}
   <div className="bg-gradient-to-br from-sky-500 to-indigo-600 rounded-full md:rounded-2xl p-3 md:p-4 shadow-lg transform hover:scale-105 transition-all">
