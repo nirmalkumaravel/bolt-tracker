@@ -266,90 +266,102 @@ function App() {
           </div>
 
           {/* Goal Progress */}
-          <div className="bg-white/95 backdrop-blur rounded-2xl p-6 shadow-xl animate-fadeIn">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Target className="w-6 h-6 text-purple-600" />
-                <span className="font-semibold text-gray-800">Goal Progress</span>
-              </div>
+         <div className="bg-white/95 backdrop-blur rounded-3xl p-5 md:p-6 shadow-xl">
+  <div className="flex items-center justify-between">
+    <div className="flex items-center gap-3">
+      <div className="w-10 h-10 rounded-2xl bg-purple-100 flex items-center justify-center">
+        <Target className="w-5 h-5 text-purple-700" />
+      </div>
+      <div className="leading-tight">
+        <div className="text-sm font-semibold text-gray-800">Goal Progress</div>
+        <div className="text-[11px] text-gray-600">
+          ${stats.totalWealth.toFixed(0)} of ${TARGET_GOAL.toLocaleString()}
+        </div>
+      </div>
+    </div>
 
-              <div className="text-right">
-                <div className="text-2xl font-bold text-purple-700">
-                  ${stats.totalWealth.toFixed(0)}
-                </div>
-                <div className="text-xs md:text-sm text-gray-600">
-                  of ${TARGET_GOAL.toLocaleString()}
-                </div>
-              </div>
-            </div>
+    <div className="text-right">
+      <div className="text-lg md:text-2xl font-extrabold text-purple-700">
+        {Math.min(progressPercentage, 100).toFixed(1)}%
+      </div>
+      <div className="text-[11px] text-gray-500">completed</div>
+    </div>
+  </div>
 
-            <div className="relative w-full h-8 rounded-full bg-gray-200 overflow-hidden shadow-inner">
-              <div className="absolute inset-0 opacity-30 animate-pulse bg-gradient-to-r from-white/0 via-white/40 to-white/0" />
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 transition-all duration-1000 ease-out shadow-[0_0_18px_rgba(236,72,153,0.45)] flex items-center justify-end pr-2"
-                style={{ width: `${Math.min(progressPercentage, 100)}%` }}
-              >
-                {progressPercentage >= 10 && (
-                  <span className="text-white text-xs font-bold drop-shadow">
-                    {progressPercentage.toFixed(1)}%
-                  </span>
-                )}
-              </div>
-              <div
-                className="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow-md"
-                style={{ left: `calc(${Math.min(progressPercentage, 100)}% - 6px)` }}
-              />
-            </div>
+  <div className="mt-4">
+    {/* Track */}
+    <div className="relative w-full h-4 md:h-5 rounded-full bg-gray-200 overflow-hidden shadow-inner">
+      {/* Shimmer layer */}
+      <div className="absolute inset-0 opacity-40 animate-pulse bg-gradient-to-r from-white/0 via-white/50 to-white/0" />
 
-            <div className="mt-2 text-xs text-gray-600 flex justify-between">
-              <span>Start</span>
-              <span className="font-semibold text-gray-700">
-                {Math.min(progressPercentage, 100).toFixed(1)}%
-              </span>
-              <span>Goal</span>
-            </div>
-          </div>
+      {/* Fill */}
+      <div
+        className="h-full rounded-full bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 transition-all duration-1000 ease-out shadow-[0_0_18px_rgba(236,72,153,0.35)]"
+        style={{ width: `${Math.min(progressPercentage, 100)}%` }}
+      />
 
-          {/* Total Trades / Wins / Losses / Success Rate */}
-          <div className="grid grid-cols-4 gap-2 md:gap-4">
-            <div className="bg-gradient-to-br from-sky-500 to-indigo-600 rounded-full md:rounded-2xl p-3 md:p-4 shadow-lg transform hover:scale-105 transition-all">
-              <div className="flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-white" />
-              </div>
-              <div className="text-center mt-1">
-                <div className="text-xs md:text-xl font-bold text-white">{stats.totalTrades}</div>
-              </div>
-            </div>
+      {/* Moving marker (with ping) */}
+      <div
+        className="absolute top-1/2 -translate-y-1/2"
+        style={{ left: `calc(${Math.min(progressPercentage, 100)}% - 10px)` }}
+      >
+        <div className="relative">
+          <div className="w-5 h-5 rounded-full bg-white shadow-md border border-purple-200" />
+          <div className="absolute inset-0 w-5 h-5 rounded-full bg-purple-400/40 animate-ping" />
+        </div>
+      </div>
+    </div>
 
-            <div className="bg-gradient-to-br from-emerald-500 to-green-600 rounded-full md:rounded-2xl p-3 md:p-4 shadow-lg transform hover:scale-105 transition-all">
-              <div className="flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 md:w-6 md:h-6 text-white" />
-              </div>
-              <div className="text-center mt-1">
-                <div className="text-xs md:text-xl font-bold text-white">{stats.wins}</div>
-              </div>
-            </div>
+    {/* Milestones */}
+    <div className="mt-2 flex justify-between text-[10px] text-gray-500">
+      <span>0%</span>
+      <span>25%</span>
+      <span>50%</span>
+      <span>75%</span>
+      <span>100%</span>
+    </div>
+  </div>
+</div>
+{/* Compact 1-row stat circles (mobile + desktop) */}
+<div className="w-full overflow-x-auto">
+  <div className="flex items-center gap-2 md:gap-3 min-w-[320px] justify-between">
+    {/* Total Trades */}
+    <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 shadow-lg flex flex-col items-center justify-center shrink-0">
+      <TrendingUp className="w-4 h-4 md:w-5 md:h-5 text-white" />
+      <div className="text-white font-extrabold text-sm md:text-lg leading-none mt-1">
+        {stats.totalTrades}
+      </div>
+      <span className="sr-only">Total Trades</span>
+    </div>
 
-            <div className="bg-gradient-to-br from-rose-500 to-red-600 rounded-full md:rounded-2xl p-3 md:p-4 shadow-lg transform hover:scale-105 transition-all">
-              <div className="flex items-center justify-center">
-                <XCircle className="w-5 h-5 md:w-6 md:h-6 text-white" />
-              </div>
-              <div className="text-center mt-1">
-                <div className="text-xs md:text-xl font-bold text-white">{stats.losses}</div>
-              </div>
-            </div>
+    {/* Wins */}
+    <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 shadow-lg flex flex-col items-center justify-center shrink-0">
+      <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-white" />
+      <div className="text-white font-extrabold text-sm md:text-lg leading-none mt-1">
+        {stats.wins}
+      </div>
+      <span className="sr-only">Wins</span>
+    </div>
 
-            <div className="bg-gradient-to-br from-fuchsia-500 to-purple-600 rounded-full md:rounded-2xl p-3 md:p-4 shadow-lg transform hover:scale-105 transition-all">
-              <div className="flex items-center justify-center">
-                <Trophy className="w-5 h-5 md:w-6 md:h-6 text-white" />
-              </div>
-              <div className="text-center mt-1">
-                <div className="text-xs md:text-xl font-bold text-white">
-                  {stats.successRate.toFixed(1)}%
-                </div>
-              </div>
-            </div>
-          </div>
+    {/* Losses */}
+    <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-rose-500 to-red-600 shadow-lg flex flex-col items-center justify-center shrink-0">
+      <XCircle className="w-4 h-4 md:w-5 md:h-5 text-white" />
+      <div className="text-white font-extrabold text-sm md:text-lg leading-none mt-1">
+        {stats.losses}
+      </div>
+      <span className="sr-only">Losses</span>
+    </div>
+
+    {/* Win % */}
+    <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-fuchsia-500 to-purple-600 shadow-lg flex flex-col items-center justify-center shrink-0">
+      <Trophy className="w-4 h-4 md:w-5 md:h-5 text-white" />
+      <div className="text-white font-extrabold text-[11px] md:text-base leading-none mt-1">
+        {stats.successRate.toFixed(0)}%
+      </div>
+      <span className="sr-only">Win Percentage</span>
+    </div>
+  </div>
+</div>
 
           {showForm && (
             <div className="bg-white/95 backdrop-blur rounded-2xl p-6 shadow-xl animate-scaleIn">
