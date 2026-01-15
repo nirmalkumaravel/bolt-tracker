@@ -118,11 +118,17 @@ export default function RelaxationModal({ isOpen, onComplete }: RelaxationModalP
   }
 
   if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-gradient-to-br from-purple-900/95 via-blue-900/95 to-indigo-900/95 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
-      <div className="max-w-md w-full bg-white/10 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-white/20 animate-scaleIn">
-        <div className="text-center space-y-6">
+return (
+  <div className="fixed inset-0 bg-gradient-to-br from-purple-900/95 via-blue-900/95 to-indigo-900/95 backdrop-blur-sm z-50 overflow-y-auto p-4 animate-fadeIn">
+    {/* center on timer, top-align on checklist */}
+    <div
+      className={`min-h-full flex ${
+        stage === 'timer' ? 'items-center' : 'items-start'
+      } justify-center`}
+    >
+      <div className="max-w-md w-full bg-white/10 backdrop-blur-md rounded-3xl shadow-2xl border border-white/20 animate-scaleIn max-h-[90vh] flex flex-col">
+        {/* Header (fixed) */}
+        <div className="text-center space-y-4 p-6 pb-4">
           <div className="flex justify-center">
             <div className="relative">
               <Brain className="w-16 h-16 text-cyan-300 animate-pulse" />
@@ -147,9 +153,24 @@ export default function RelaxationModal({ isOpen, onComplete }: RelaxationModalP
                   style={{ width: `${progress}%` }}
                 />
               </div>
+            </>
+          ) : (
+            <>
+              <h2 className="text-3xl font-bold text-white">Quick Clarity Check</h2>
+              <p className="text-cyan-100/90 text-sm leading-relaxed">
+                Answer honestly. You can proceed only if you complete all questions and have at least{' '}
+                <span className="font-semibold text-white">4 out of 5</span> “Yes”.
+              </p>
+            </>
+          )}
+        </div>
 
+        {/* Body (scrollable) */}
+        <div className="px-6 pb-6 overflow-y-auto flex-1">
+          {stage === 'timer' ? (
+            <>
               <div className="min-h-[120px] flex items-center justify-center">
-                <p className="text-lg text-cyan-100 font-medium animate-fadeIn px-4 leading-relaxed">
+                <p className="text-lg text-cyan-100 font-medium animate-fadeIn px-4 leading-relaxed text-center">
                   {RELAXATION_TIPS[currentTipIndex]}
                 </p>
               </div>
@@ -164,12 +185,6 @@ export default function RelaxationModal({ isOpen, onComplete }: RelaxationModalP
             </>
           ) : (
             <>
-              <h2 className="text-3xl font-bold text-white">Quick Clarity Check</h2>
-              <p className="text-cyan-100/90 text-sm leading-relaxed">
-                Answer honestly. You can proceed only if you complete all questions and have at least{' '}
-                <span className="font-semibold text-white">4 out of 5</span> “Yes”.
-              </p>
-
               <div className="space-y-3 text-left">
                 {CHECK_QUESTIONS.map((q) => {
                   const val = answers[q.id];
@@ -212,14 +227,17 @@ export default function RelaxationModal({ isOpen, onComplete }: RelaxationModalP
                 })}
               </div>
 
-              <div className="flex items-center justify-between text-sm text-cyan-100/90">
+              <div className="mt-4 flex items-center justify-between text-sm text-cyan-100/90">
                 <div>
-                  Yes count:{' '}
-                  <span className="font-semibold text-white">{yesCount}</span>/5
+                  Yes count: <span className="font-semibold text-white">{yesCount}</span>/5
                 </div>
                 <div>
                   Status:{' '}
-                  <span className={`font-semibold ${canComplete ? 'text-emerald-300' : 'text-rose-300'}`}>
+                  <span
+                    className={`font-semibold ${
+                      canComplete ? 'text-emerald-300' : 'text-rose-300'
+                    }`}
+                  >
                     {canComplete ? 'Ready' : 'Not Ready'}
                   </span>
                 </div>
@@ -228,17 +246,21 @@ export default function RelaxationModal({ isOpen, onComplete }: RelaxationModalP
               <button
                 onClick={onComplete}
                 disabled={!canComplete}
-                className={`w-full py-4 rounded-xl font-semibold text-lg transition-all duration-300 transform ${
+                className={`mt-4 w-full py-4 rounded-xl font-semibold text-lg transition-all duration-300 transform ${
                   !canComplete
                     ? 'bg-gray-500/50 text-gray-300 cursor-not-allowed'
                     : 'bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 text-white hover:scale-105 hover:shadow-lg hover:shadow-purple-500/50'
                 }`}
               >
-                {canComplete ? 'Complete Check ✓' : allAnswered ? 'Need 4+ Yes to Proceed' : 'Answer All Questions'}
+                {canComplete
+                  ? 'Complete Check ✓'
+                  : allAnswered
+                  ? 'Need 4+ Yes to Proceed'
+                  : 'Answer All Questions'}
               </button>
 
               {!canComplete && allAnswered && (
-                <div className="text-xs text-cyan-100/80 leading-relaxed">
+                <div className="mt-3 text-xs text-cyan-100/80 leading-relaxed">
                   If you got multiple “No”, consider skipping the next trade or reducing stake size.
                 </div>
               )}
@@ -247,5 +269,5 @@ export default function RelaxationModal({ isOpen, onComplete }: RelaxationModalP
         </div>
       </div>
     </div>
-  );
-}
+  </div>
+);
