@@ -1,567 +1,240 @@
-import React, { useEffect, useState } from 'react';
-import {
-  TrendingUp,
-  DollarSign,
-  Target,
-  Plus,
-  RefreshCw,
-  CheckCircle,
-  XCircle,
-  Wallet,
-  PiggyBank,
-  Trophy,
-} from 'lucide-react';
-import { supabase } from './lib/supabase';
-import { Trade, TradeFormData, Stats } from './types/trade';
-import RelaxationModal from './components/RelaxationModal';
+// RelaxationModal.tsx (drop-in scroll-safe)
+import React, { useEffect, useMemo, useState } from 'react';
+import { Brain, Sparkles, CheckCircle2, XCircle } from 'lucide-react';
 
-const STARTING_ROLL_POT = 0;
-const STARTING_BANK_TOTAL = 3000;
-const TARGET_GOAL = 20000;
+interface RelaxationModalProps {
+  isOpen: boolean;
+  onComplete: () => void;
+}
 
-function App() {
-  const [trades, setTrades] = useState<Trade[]>([]);
-  const [stats, setStats] = useState<Stats>({
-    rollPot: STARTING_ROLL_POT,
-    bankTotal: STARTING_BANK_TOTAL,
-    totalWealth: STARTING_ROLL_POT + STARTING_BANK_TOTAL, // ✅ fix
-    totalTrades: 0,
-    wins: 0,
-    losses: 0,
-    successRate: 0,
-  });
-  const [isLoading, setIsLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [showRelaxation, setShowRelaxation] = useState(false);
-  const [formData, setFormData] = useState<TradeFormData>({
-    trade_date: new Date().toISOString().split('T')[0],
-    description: '',
-    multiplier: 2.0,
-    stake: 0,
-    outcome: 'win',
+const RELAXATION_TIPS = [
+  'Take a deep breath. Trading requires a clear mind.',
+  'Remember: Discipline beats emotion every time.',
+  'One trade at a time. Focus on the process, not the outcome.',
+  'Winners plan their trades and trade their plan.',
+  'Stay patient. The market rewards those who wait.',
+  'Risk management is your best friend.',
+  "Don't chase losses. Stick to your strategy.",
+  'Celebrate wins, learn from losses.',
+  'Every trade is a lesson, not just a result.',
+  'Stay calm, stay focused, stay profitable.',
+  'The best traders know when NOT to trade.',
+  'Your mindset is your greatest asset.',
+  'Consistency compounds over time.',
+  'Trust your analysis, trust your plan.',
+  'Take breaks. Fresh minds make better decisions.',
+];
+
+type Answer = 'yes' | 'no' | null;
+
+type CheckQuestion = { id: string; text: string };
+
+const CHECK_QUESTIONS: CheckQuestion[] = [
+  { id: 'calm', text: 'I feel calm and steady right now.' },
+  { id: 'plan', text: 'I have a clear plan and I will follow it.' },
+  { id: 'risk', text: 'I know my risk (stake/stop) before entering.' },
+  { id: 'no_revenge', text: 'I am not trying to recover a loss (no revenge trading).' },
+  { id: 'ok_to_skip', text: 'I am okay skipping this trade if conditions are not perfect.' },
+];
+
+export default function RelaxationModal({ isOpen, onComplete }: RelaxationModalProps) {
+  const [seconds, setSeconds] = useState(30);
+  const [currentTipIndex, setCurrentTipIndex] = useState(0);
+  const [stage, setStage] = useState<'timer' | 'checklist'>('timer');
+
+  const [answers, setAnswers] = useState<Record<string, Answer>>({
+    calm: null,
+    plan: null,
+    risk: null,
+    no_revenge: null,
+    ok_to_skip: null,
   });
 
   useEffect(() => {
-    loadTrades();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  async function loadTrades() {
-    setIsLoading(true);
-    const { data, error } = await supabase
-      .from('trades')
-      .select('*')
-      .order('trade_number', { ascending: false });
-
-    if (error) {
-      console.error('Error loading trades:', error);
-    } else if (data) {
-      setTrades(data);
-      calculateStats(data);
+    if (!isOpen) {
+      setSeconds(30);
+      setCurrentTipIndex(0);
+      setStage('timer');
+      setAnswers({ calm: null, plan: null, risk: null, no_revenge: null, ok_to_skip: null });
+      return;
     }
-    setIsLoading(false);
-  }
 
-  function calculateStats(tradesList: Trade[]) {
-    if (tradesList.length === 0) {
-      setStats({
-        rollPot: STARTING_ROLL_POT,
-        bankTotal: STARTING_BANK_TOTAL,
-        totalWealth: STARTING_ROLL_POT + STARTING_BANK_TOTAL, // ✅ fix
-        totalTrades: 0,
-        wins: 0,
-        losses: 0,
-        successRate: 0,
+    setStage('timer');
+    setSeconds(30);
+
+    const timer = window.setInterval(() => {
+      setSeconds((prev) => {
+        if (prev <= 1) {
+          window.clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
       });
-      return;
-    }
+    }, 1000);
 
-    const latestTrade = tradesList[0];
-    const wins = tradesList.filter((t) => t.outcome === 'win').length;
-    const losses = tradesList.filter((t) => t.outcome === 'loss').length;
-    const successRate = tradesList.length > 0 ? (wins / tradesList.length) * 100 : 0;
+    const tipTimer = window.setInterval(() => {
+      setCurrentTipIndex((prev) => (prev + 1) % RELAXATION_TIPS.length);
+    }, 3000);
 
-    setStats({
-      rollPot: latestTrade.roll_pot_after,
-      bankTotal: latestTrade.bank_total_after,
-      totalWealth: latestTrade.total_wealth_after,
-      totalTrades: tradesList.length,
-      wins,
-      losses,
-      successRate,
-    });
-  }
-
-  async function handleAddTrade(e: React.FormEvent) {
-    e.preventDefault();
-
-    if (formData.stake <= 0) {
-      alert('Stake must be greater than 0!');
-      return;
-    }
-
-    const stake = Number(formData.stake);
-    const multiplier = Number(formData.multiplier);
-
-    let newRollPot = stats.rollPot;
-    let newBankTotal = stats.bankTotal;
-
-    // ✅ Seeding rule (as you wrote): if rollPot is 0, allow stake from bank
-    const isSeedingTrade = stats.rollPot <= 0;
-
-    if (isSeedingTrade) {
-      if (stake > stats.bankTotal) {
-        alert('Stake cannot exceed Bank balance!');
-        return;
-      }
-    } else {
-      if (stake > stats.rollPot) {
-        alert('Stake cannot exceed Roll Pot balance!');
-        return;
-      }
-    }
-
-    const totalReturn = formData.outcome === 'win' ? stake * multiplier : 0;
-
-    // ✅ Split based on TOTAL RETURN (profit + capital)
-    const bankAllocation = formData.outcome === 'win' ? totalReturn * 0.3 : 0;
-    const rollAllocation = formData.outcome === 'win' ? totalReturn * 0.7 : 0;
-
-    if (formData.outcome === 'win') {
-      if (isSeedingTrade) {
-        // bank funds the stake, then gets 30% of total return back
-        newBankTotal = stats.bankTotal - stake + bankAllocation;
-        newRollPot = stats.rollPot + rollAllocation;
-      } else {
-        // stake comes from roll pot; bank is not debited
-        newBankTotal = stats.bankTotal + bankAllocation;
-        newRollPot = stats.rollPot - stake + rollAllocation;
-      }
-    } else {
-      // LOSS
-      if (isSeedingTrade) {
-        // seeding loss: lose stake from bank, roll pot stays 0
-        newBankTotal = stats.bankTotal - stake;
-        newRollPot = stats.rollPot;
-      } else {
-        // normal loss: burn from roll pot
-        newRollPot = stats.rollPot - stake;
-        newBankTotal = stats.bankTotal;
-      }
-    }
-
-    const profitLoss = formData.outcome === 'win' ? totalReturn - stake : -stake;
-    const amountBanked = bankAllocation;
-
-    const newTotalWealth = newRollPot + newBankTotal;
-    const tradeNumber = trades.length + 1;
-
-    const newTrade = {
-      trade_date: formData.trade_date,
-      description: formData.description,
-      multiplier,
-      stake,
-      outcome: formData.outcome,
-      profit_loss: profitLoss,
-      amount_banked: amountBanked,
-      roll_pot_after: newRollPot,
-      bank_total_after: newBankTotal,
-      total_wealth_after: newTotalWealth,
-      trade_number: tradeNumber,
+    return () => {
+      window.clearInterval(timer);
+      window.clearInterval(tipTimer);
     };
+  }, [isOpen]);
 
-    const { error } = await supabase.from('trades').insert([newTrade]);
+  useEffect(() => {
+    if (!isOpen) return;
+    if (seconds === 0) setStage('checklist');
+  }, [seconds, isOpen]);
 
-    if (error) {
-      console.error('Error adding trade:', error);
-      alert('Failed to add trade');
-    } else {
-      setFormData({
-        trade_date: new Date().toISOString().split('T')[0],
-        description: '',
-        multiplier: 2.0,
-        stake: 0,
-        outcome: 'win',
-      });
-      setShowForm(false);
-      setShowRelaxation(true);
-      await loadTrades();
-    }
+  const progress = ((30 - seconds) / 30) * 100;
+
+  const allAnswered = useMemo(
+    () => CHECK_QUESTIONS.every((q) => answers[q.id] !== null),
+    [answers]
+  );
+
+  const yesCount = useMemo(
+    () => CHECK_QUESTIONS.reduce((acc, q) => acc + (answers[q.id] === 'yes' ? 1 : 0), 0),
+    [answers]
+  );
+
+  const canComplete = stage === 'checklist' && allAnswered && yesCount >= 4;
+
+  function setAnswer(id: string, value: Answer) {
+    setAnswers((prev) => ({ ...prev, [id]: value }));
   }
 
-  async function handleReset() {
-    if (!confirm('Are you sure you want to reset all data? This cannot be undone.')) {
-      return;
-    }
-
-    const { error } = await supabase
-      .from('trades')
-      .delete()
-      .neq('id', '00000000-0000-0000-0000-000000000000');
-
-    if (error) {
-      console.error('Error resetting trades:', error);
-      alert('Failed to reset data');
-    } else {
-      await loadTrades();
-    }
-  }
-
-  const progressPercentage = (stats.totalWealth / TARGET_GOAL) * 100;
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 flex items-center justify-center">
-        <div className="text-white text-2xl animate-pulse">Loading...</div>
-      </div>
-    );
-  }
+  if (!isOpen) return null;
 
   return (
-    <>
-      <div className="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 p-4 pb-20">
-        <div className="max-w-6xl mx-auto space-y-6">
-          <div className="text-center py-6 animate-fadeIn">
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-2 flex items-center justify-center gap-3">
-              <TrendingUp className="w-10 h-10" />
-              Trading Tracker
-            </h1>
-            <p className="text-blue-100 text-lg">Master Your Trades, Secure Your Future</p>
-          </div>
-
-          {/* Top 3 summary cards */}
-          <div className="grid grid-cols-3 gap-2 md:gap-4">
-            <div className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full md:rounded-2xl p-3 md:p-6 shadow-xl transform hover:scale-105 transition-all duration-300 animate-slideInLeft">
-              <div className="flex items-center justify-center">
-                <Wallet className="w-6 h-6 md:w-8 md:h-8 text-white" />
-              </div>
-              <div className="text-center mt-1 md:mt-2">
-                <div className="text-xs md:text-3xl font-bold text-white">
-                  ${stats.rollPot.toFixed(2)}
-                </div>
+    <div
+      className="fixed inset-0 z-50 bg-gradient-to-br from-purple-900/95 via-blue-900/95 to-indigo-900/95 backdrop-blur-sm overflow-y-auto touch-pan-y"
+      style={{ WebkitOverflowScrolling: 'touch' }}
+    >
+      <div className="min-h-full w-full flex items-start justify-center p-4 py-10">
+        <div className="max-w-md w-full bg-white/10 backdrop-blur-md rounded-3xl p-8 shadow-2xl border border-white/20 animate-scaleIn">
+          <div className="text-center space-y-6">
+            <div className="flex justify-center">
+              <div className="relative">
+                <Brain className="w-16 h-16 text-cyan-300 animate-pulse" />
+                <Sparkles className="w-8 h-8 text-yellow-300 absolute -top-2 -right-2 animate-spin-slow" />
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-green-400 to-emerald-600 rounded-full md:rounded-2xl p-3 md:p-6 shadow-xl transform hover:scale-105 transition-all duration-300 animate-slideInUp">
-              <div className="flex items-center justify-center">
-                <PiggyBank className="w-6 h-6 md:w-8 md:h-8 text-white" />
-              </div>
-              <div className="text-center mt-1 md:mt-2">
-                <div className="text-xs md:text-3xl font-bold text-white">
-                  ${stats.bankTotal.toFixed(2)}
+            {stage === 'timer' ? (
+              <>
+                <h2 className="text-3xl font-bold text-white">Take a Breath</h2>
+
+                <div className="relative">
+                  <div className="text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-blue-300 to-purple-300 animate-pulse">
+                    {seconds}
+                  </div>
+                  <div className="text-sm text-cyan-200 mt-2">seconds remaining</div>
                 </div>
-              </div>
-            </div>
 
-            <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-full md:rounded-2xl p-3 md:p-6 shadow-xl transform hover:scale-105 transition-all duration-300 animate-slideInRight">
-              <div className="flex items-center justify-center">
-                <DollarSign className="w-6 h-6 md:w-8 md:h-8 text-white" />
-              </div>
-              <div className="text-center mt-1 md:mt-2">
-                <div className="text-xs md:text-3xl font-bold text-white">
-                  ${stats.totalWealth.toFixed(2)}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Goal Progress */}
-         <div className="bg-white/95 backdrop-blur rounded-3xl p-5 md:p-6 shadow-xl">
-  <div className="flex items-center justify-between">
-    <div className="flex items-center gap-3">
-      <div className="w-10 h-10 rounded-2xl bg-purple-100 flex items-center justify-center">
-        <Target className="w-5 h-5 text-purple-700" />
-      </div>
-      <div className="leading-tight">
-        <div className="text-sm font-semibold text-gray-800">Goal Progress</div>
-        <div className="text-[11px] text-gray-600">
-          ${stats.totalWealth.toFixed(0)} of ${TARGET_GOAL.toLocaleString()}
-        </div>
-      </div>
-    </div>
-
-    <div className="text-right">
-      <div className="text-lg md:text-2xl font-extrabold text-purple-700">
-        {Math.min(progressPercentage, 100).toFixed(1)}%
-      </div>
-      <div className="text-[11px] text-gray-500">completed</div>
-    </div>
-  </div>
-
-  <div className="mt-4">
-    {/* Track */}
-    <div className="relative w-full h-4 md:h-5 rounded-full bg-gray-200 overflow-hidden shadow-inner">
-      {/* Shimmer layer */}
-      <div className="absolute inset-0 opacity-40 animate-pulse bg-gradient-to-r from-white/0 via-white/50 to-white/0" />
-
-      {/* Fill */}
-      <div
-        className="h-full rounded-full bg-gradient-to-r from-purple-600 via-pink-500 to-orange-500 transition-all duration-1000 ease-out shadow-[0_0_18px_rgba(236,72,153,0.35)]"
-        style={{ width: `${Math.min(progressPercentage, 100)}%` }}
-      />
-
-      {/* Moving marker (with ping) */}
-      <div
-        className="absolute top-1/2 -translate-y-1/2"
-        style={{ left: `calc(${Math.min(progressPercentage, 100)}% - 10px)` }}
-      >
-        <div className="relative">
-          <div className="w-5 h-5 rounded-full bg-white shadow-md border border-purple-200" />
-          <div className="absolute inset-0 w-5 h-5 rounded-full bg-purple-400/40 animate-ping" />
-        </div>
-      </div>
-    </div>
-
-    {/* Milestones */}
-    <div className="mt-2 flex justify-between text-[10px] text-gray-500">
-      <span>0%</span>
-      <span>25%</span>
-      <span>50%</span>
-      <span>75%</span>
-      <span>100%</span>
-    </div>
-  </div>
-</div>
-{/* Compact 1-row stat circles (mobile + desktop) */}
-<div className="w-full overflow-x-auto">
-  <div className="flex items-center gap-2 md:gap-3 min-w-[320px] justify-between">
-    {/* Total Trades */}
-    <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 shadow-lg flex flex-col items-center justify-center shrink-0">
-      <TrendingUp className="w-4 h-4 md:w-5 md:h-5 text-white" />
-      <div className="text-white font-extrabold text-sm md:text-lg leading-none mt-1">
-        {stats.totalTrades}
-      </div>
-      <span className="sr-only">Total Trades</span>
-    </div>
-
-    {/* Wins */}
-    <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-emerald-500 to-green-600 shadow-lg flex flex-col items-center justify-center shrink-0">
-      <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-white" />
-      <div className="text-white font-extrabold text-sm md:text-lg leading-none mt-1">
-        {stats.wins}
-      </div>
-      <span className="sr-only">Wins</span>
-    </div>
-
-    {/* Losses */}
-    <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-rose-500 to-red-600 shadow-lg flex flex-col items-center justify-center shrink-0">
-      <XCircle className="w-4 h-4 md:w-5 md:h-5 text-white" />
-      <div className="text-white font-extrabold text-sm md:text-lg leading-none mt-1">
-        {stats.losses}
-      </div>
-      <span className="sr-only">Losses</span>
-    </div>
-
-    {/* Win % */}
-    <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-fuchsia-500 to-purple-600 shadow-lg flex flex-col items-center justify-center shrink-0">
-      <Trophy className="w-4 h-4 md:w-5 md:h-5 text-white" />
-      <div className="text-white font-extrabold text-[11px] md:text-base leading-none mt-1">
-        {stats.successRate.toFixed(0)}%
-      </div>
-      <span className="sr-only">Win Percentage</span>
-    </div>
-  </div>
-</div>
-
-          {showForm && (
-            <div className="bg-white/95 backdrop-blur rounded-2xl p-6 shadow-xl animate-scaleIn">
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">Add New Trade</h2>
-              <form onSubmit={handleAddTrade} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                  <input
-                    type="date"
-                    value={formData.trade_date}
-                    onChange={(e) => setFormData({ ...formData, trade_date: e.target.value })}
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
-                    required
+                <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 transition-all duration-1000 ease-linear"
+                    style={{ width: `${progress}%` }}
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    placeholder="e.g., BTC Long Position"
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
-                    required
-                  />
+                <div className="min-h-[120px] flex items-center justify-center">
+                  <p className="text-lg text-cyan-100 font-medium animate-fadeIn px-4 leading-relaxed">
+                    {RELAXATION_TIPS[currentTipIndex]}
+                  </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={onComplete}
+                  disabled
+                  className="w-full py-4 rounded-xl font-semibold text-lg transition-all duration-300 bg-gray-500/50 text-gray-300 cursor-not-allowed"
+                >
+                  Relaxing...
+                </button>
+              </>
+            ) : (
+              <>
+                <h2 className="text-3xl font-bold text-white">Quick Clarity Check</h2>
+                <p className="text-cyan-100/90 text-sm leading-relaxed">
+                  Answer honestly. You can proceed only if you complete all questions and have at least{' '}
+                  <span className="font-semibold text-white">4 out of 5</span> “Yes”.
+                </p>
+
+                <div className="space-y-3 text-left">
+                  {CHECK_QUESTIONS.map((q) => {
+                    const val = answers[q.id];
+                    return (
+                      <div key={q.id} className="rounded-2xl bg-white/10 border border-white/15 p-4">
+                        <div className="text-white font-medium">{q.text}</div>
+
+                        <div className="mt-3 flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setAnswer(q.id, 'yes')}
+                            className={`flex-1 py-2 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
+                              val === 'yes'
+                                ? 'bg-emerald-500 text-white shadow-lg'
+                                : 'bg-white/10 text-white/80 hover:bg-white/15'
+                            }`}
+                          >
+                            <CheckCircle2 className="w-5 h-5" />
+                            Yes
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setAnswer(q.id, 'no')}
+                            className={`flex-1 py-2 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
+                              val === 'no'
+                                ? 'bg-rose-500 text-white shadow-lg'
+                                : 'bg-white/10 text-white/80 hover:bg-white/15'
+                            }`}
+                          >
+                            <XCircle className="w-5 h-5" />
+                            No
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center justify-between text-sm text-cyan-100/90">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Multiplier (Odds)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="1.01"
-                      value={formData.multiplier}
-                      onChange={(e) =>
-                        setFormData({ ...formData, multiplier: parseFloat(e.target.value) })
-                      }
-                      className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
-                      required
-                    />
+                    Yes count: <span className="font-semibold text-white">{yesCount}</span>/5
                   </div>
-
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Stake Amount ($)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      max={stats.rollPot > 0 ? stats.rollPot : stats.bankTotal}
-                      value={formData.stake || ''}
-                      onChange={(e) => setFormData({ ...formData, stake: parseFloat(e.target.value) })}
-                      className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
-                      required
-                    />
+                    Status:{' '}
+                    <span className={`font-semibold ${canComplete ? 'text-emerald-300' : 'text-rose-300'}`}>
+                      {canComplete ? 'Ready' : 'Not Ready'}
+                    </span>
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Outcome</label>
-                  <div className="grid grid-cols-2 gap-4">
-                    <button
-                      type="button"
-                      onClick={() => setFormData({ ...formData, outcome: 'win' })}
-                      className={`py-3 px-4 rounded-lg font-semibold transition-all ${
-                        formData.outcome === 'win'
-                          ? 'bg-green-500 text-white shadow-lg scale-105'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                    >
-                      <CheckCircle className="w-5 h-5 inline mr-2" />
-                      Win
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFormData({ ...formData, outcome: 'loss' })}
-                      className={`py-3 px-4 rounded-lg font-semibold transition-all ${
-                        formData.outcome === 'loss'
-                          ? 'bg-red-500 text-white shadow-lg scale-105'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                      }`}
-                    >
-                      <XCircle className="w-5 h-5 inline mr-2" />
-                      Loss
-                    </button>
+                <button
+                  onClick={onComplete}
+                  disabled={!canComplete}
+                  className={`w-full py-4 rounded-xl font-semibold text-lg transition-all duration-300 transform ${
+                    !canComplete
+                      ? 'bg-gray-500/50 text-gray-300 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500 text-white hover:scale-105 hover:shadow-lg hover:shadow-purple-500/50'
+                  }`}
+                >
+                  {canComplete ? 'Complete Check ✓' : allAnswered ? 'Need 4+ Yes to Proceed' : 'Answer All Questions'}
+                </button>
+
+                {!canComplete && allAnswered && (
+                  <div className="text-xs text-cyan-100/80 leading-relaxed">
+                    If you got multiple “No”, consider skipping the next trade or reducing stake size.
                   </div>
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="submit"
-                    className="flex-1 bg-gradient-to-r from-purple-500 to-pink-600 text-white py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-700 transform hover:scale-105 transition-all shadow-lg"
-                  >
-                    Add Trade
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowForm(false)}
-                    className="px-6 bg-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-400 transition-all"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
-            </div>
-          )}
-
-          {!showForm && (
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowForm(true)}
-                className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-xl font-semibold text-lg hover:from-green-600 hover:to-emerald-700 transform hover:scale-105 transition-all shadow-xl flex items-center justify-center gap-2"
-              >
-                <Plus className="w-6 h-6" />
-                Add New Trade
-              </button>
-              <button
-                onClick={handleReset}
-                className="px-6 bg-red-500 text-white py-4 rounded-xl font-semibold hover:bg-red-600 transform hover:scale-105 transition-all shadow-xl"
-              >
-                <RefreshCw className="w-6 h-6" />
-              </button>
-            </div>
-          )}
-
-          {trades.length > 0 && (
-            <div className="bg-white/95 backdrop-blur rounded-2xl p-6 shadow-xl animate-fadeIn">
-              <h2 className="text-2xl font-bold text-gray-800 mb-4">Trade History</h2>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b-2 border-gray-300">
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700">#</th>
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700">Date</th>
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700">
-                        Description
-                      </th>
-                      <th className="text-right py-3 px-2 font-semibold text-gray-700">Stake</th>
-                      <th className="text-right py-3 px-2 font-semibold text-gray-700">Mult.</th>
-                      <th className="text-right py-3 px-2 font-semibold text-gray-700">P/L</th>
-                      <th className="text-right py-3 px-2 font-semibold text-gray-700">Banked</th>
-                      <th className="text-right py-3 px-2 font-semibold text-gray-700">Roll Pot</th>
-                      <th className="text-right py-3 px-2 font-semibold text-gray-700">Bank</th>
-                      <th className="text-right py-3 px-2 font-semibold text-gray-700">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {trades.map((trade) => (
-                      <tr
-                        key={trade.id}
-                        className="border-b border-gray-200 hover:bg-purple-50 transition-colors"
-                      >
-                        <td className="py-3 px-2 font-medium">{trade.trade_number}</td>
-                        <td className="py-3 px-2 text-gray-600">
-                          {new Date(trade.trade_date).toLocaleDateString()}
-                        </td>
-                        <td className="py-3 px-2 text-gray-800">{trade.description}</td>
-                        <td className="py-3 px-2 text-right font-medium">
-                          ${trade.stake.toFixed(2)}
-                        </td>
-                        <td className="py-3 px-2 text-right">{trade.multiplier.toFixed(2)}x</td>
-                        <td
-                          className={`py-3 px-2 text-right font-bold ${
-                            trade.outcome === 'win' ? 'text-green-600' : 'text-red-600'
-                          }`}
-                        >
-                          {trade.profit_loss >= 0 ? '+' : ''}${trade.profit_loss.toFixed(2)}
-                        </td>
-                        <td className="py-3 px-2 text-right text-green-600 font-medium">
-                          ${trade.amount_banked.toFixed(2)}
-                        </td>
-                        <td className="py-3 px-2 text-right font-medium">
-                          ${trade.roll_pot_after.toFixed(2)}
-                        </td>
-                        <td className="py-3 px-2 text-right font-medium">
-                          ${trade.bank_total_after.toFixed(2)}
-                        </td>
-                        <td className="py-3 px-2 text-right font-bold text-purple-600">
-                          ${trade.total_wealth_after.toFixed(2)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
-
-      <RelaxationModal isOpen={showRelaxation} onComplete={() => setShowRelaxation(false)} />
-    </>
+    </div>
   );
 }
-
-export default App;
